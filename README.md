@@ -5,7 +5,7 @@ Serverdən frontend-ə cavabı **hissə-hissə** (stream) göndərməyin Java 21
 | Modul | Nə göstərir | Port | Status |
 |---|---|---|---|
 | [`mvc-streaming`](mvc-streaming) | Spring MVC (servlet): SSE, NDJSON, fayl streaming | 8080 | ✅ |
-| `webflux-streaming` | WebFlux: reaktiv streaming, adi request-lərdən fərqi | 8081 | planlaşdırılıb |
+| [`webflux-streaming`](webflux-streaming) | WebFlux: adi request-lərdən fərqi (thread modeli, `Mono.zip`), reaktiv streaming, backpressure | 8081 | ✅ |
 | `grpc-streaming` | gRPC: server, client və bidirectional streaming | 9090 | planlaşdırılıb |
 
 ## Bir əmrlə işə salmaq
@@ -16,7 +16,9 @@ Yalnız Docker lazımdır (Java və ya Gradle quraşdırmağa ehtiyac yoxdur):
 docker compose up --build
 ```
 
-Sonra brauzerdə açın: **http://localhost:8080**
+Sonra brauzerdə açın:
+- Spring MVC: **http://localhost:8080**
+- WebFlux: **http://localhost:8081**
 
 Dayandırmaq üçün `Ctrl+C` və ya `docker compose down`.
 
@@ -25,7 +27,8 @@ Dayandırmaq üçün `Ctrl+C` və ya `docker compose down`.
 Java 21 lazımdır:
 
 ```bash
-./gradlew :mvc-streaming:bootRun     # tətbiq
+./gradlew :mvc-streaming:bootRun     # Spring MVC, port 8080
+./gradlew :webflux-streaming:bootRun # WebFlux, port 8081
 ./gradlew build                      # bütün testlər
 ```
 
@@ -35,8 +38,12 @@ Java 21 lazımdır:
 .
 ├── compose.yaml            # bütün modullar, bir əmrlə
 ├── settings.gradle         # Gradle multi-module
-└── mvc-streaming/
-    ├── Dockerfile          # multi-stage: Gradle ilə build, JRE ilə run
-    ├── README.md           # ətraflı izah
+├── mvc-streaming/          # Spring MVC (Tomcat)
+│   ├── Dockerfile          # multi-stage: Gradle ilə build, JRE ilə run
+│   ├── README.md           # ətraflı izah
+│   └── src/
+└── webflux-streaming/      # WebFlux (Netty)
+    ├── Dockerfile
+    ├── README.md
     └── src/
 ```

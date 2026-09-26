@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="az">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WebFlux streaming</title>
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --text:#1d2330; --muted:#667085; --accent:#7c3aed; --border:#e4e7ec; --ok:#16a34a; --bad:#dc2626; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0f1115; --card:#181b22; --text:#e6e8ec; --muted:#98a2b3; --accent:#a78bfa; --border:#2a2f3a; --ok:#4ade80; --bad:#f87171; } }
+  * { box-sizing: border-box; }
+  body { margin:0; font:15px/1.5 system-ui, sans-serif; background:var(--bg); color:var(--text); }
+  main { max-width: 960px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 24px; }
+  section { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:16px; margin-bottom:16px; }
+  h2 { font-size:16px; margin:0 0 4px; }
+  .desc { color:var(--muted); margin:0 0 12px; font-size:14px; }
+  code { font-size: 13px; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  label { color:var(--muted); font-size:14px; }
+  input { font:inherit; padding:6px 10px; border:1px solid var(--border); border-radius:6px; background:transparent; color:inherit; }
+  input[type=text] { flex:1; min-width:200px; }
+  input[type=number] { width:100px; }
+  button { font:inherit; padding:6px 12px; border:1px solid var(--accent); border-radius:6px; background:var(--accent); color:#fff; cursor:pointer; }
+  button.secondary { background:transparent; color:var(--accent); }
+  button:disabled { opacity:.5; cursor:default; }
+  .out { margin-top:12px; padding:10px 12px; min-height:48px; border:1px dashed var(--border); border-radius:6px; white-space:pre-wrap; }
+  .stats { margin-top:8px; color:var(--muted); font-size:13px; font-variant-numeric: tabular-nums; }
+  table { width:100%; border-collapse:collapse; margin-top:12px; font-size:13px; font-variant-numeric: tabular-nums; }
+  th, td { text-align:left; padding:4px 6px; border-bottom:1px solid var(--border); }
+  .tablewrap { max-height:220px; overflow:auto; }
+  .bar { display:inline-block; height:10px; border-radius:5px; background:var(--accent); vertical-align:middle; }
+</style>
+</head>
+<body>
+<main>
+  <h1>WebFlux: adi request-lərdən fərqi</h1>
+  <p class="sub">Netty üzərində, hər CPU nüvəsinə bir "event loop" thread-i. Thread gözləmir, işlər hadisə gələndə davam edir.</p>
+
+  <section>
+    <h2>1. Thread modeli: 100 paralel sorğu</h2>
+    <p class="desc">Hər sorğu 300 ms "gözləyir". Eyni gözləmə üç cür yazılıb. Server özü <code>WebClient</code> ilə 100 paralel sorğu göndərir (brauzer bir hosta cəmi ~6 əlaqə açır).</p>
+    <div class="row">
+      <label>sorğu</label><input id="requests" type="number" value="100" min="1" max="500">
+      <label>gecikmə, ms</label><input id="delay" type="number" value="300" min="1" max="5000">
+    </div>
+    <div class="row" style="margin-top:8px">
+      <button data-mode="blocking">Bloklayan (Thread.sleep)</button>
+      <button data-mode="reactive">Reaktiv (Mono.delay)</button>
+      <button data-mode="offloaded">Bloklayan, boundedElastic-də</button>
+    </div>
+    <table><thead><tr><th>üsul</th><th>ümumi vaxt</th><th></th><th>event-loop thread-ləri</th></tr></thead><tbody id="loadRows"></tbody></table>
+  </section>
+
+  <section>
+    <h2>2. Üç servisə müraciət: ardıcıl və paralel (<code>Mono.zip</code>)</h2>
+    <p class="desc">İstifadəçi (300 ms), sifarişlər (500 ms), tövsiyələr (400 ms). Paralel variant əlavə thread yaratmır.</p>
+    <div class="row">
+      <button id="seq" class="secondary">Ardıcıl</button>
+      <button id="par">Paralel</button>
+    </div>
+    <div id="dashStats" class="stats"></div>
+  </section>
+
+  <section>
+    <h2>3. Chat cavabı: SSE (<code>Flux&lt;ServerSentEvent&gt;</code>)</h2>
+    <p class="desc">MVC modulundakı ilə eyni nəticə, amma nə executor, nə emitter, nə də "client hələ burdadırmı" yoxlaması var.</p>
+    <div class="row">
+      <input id="prompt" type="text" value="WebFlux nədir?">
+      <button id="ask">Soruş</button>
+    </div>
+    <div id="answer" class="out"></div>
+    <div id="chatStats" class="stats"></div>
+  </section>
+
+  <section>
+    <h2>4. Eyni <code>Flux&lt;Order&gt;</code>, iki format</h2>
+    <p class="desc">Bir controller metodu; formatı <code>Accept</code> header-i seçir. "Dayandır" basanda server də dayanır (backpressure + cancel), statistikaya baxın.</p>
+    <div class="row">
+      <input id="count" type="number" value="5000" min="1" max="1000000">
+      <button id="ndjson">NDJSON (application/x-ndjson)</button>
+      <button id="json" class="secondary">JSON massivi (application/json)</button>
+      <button id="stop" class="secondary" disabled>Dayandır</button>
+    </div>
+    <div id="orderStats" class="stats"></div>
+    <div id="serverStats" class="stats"></div>
+    <div class="tablewrap"><table><thead><tr><th>id</th><th>müştəri</th><th>məbləğ</th><th>status</th></tr></thead><tbody id="rows"></tbody></table></div>
+  </section>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const ms = t => Math.round(performance.now() - t);
+
+// 1. Thread model
+document.querySelectorAll('button[data-mode]').forEach(btn => btn.onclick = async () => {
+  const mode = btn.dataset.mode;
+  document.querySelectorAll('button[data-mode]').forEach(b => b.disabled = true);
+  const tr = document.createElement('tr');
+  tr.innerHTML = `<td>${btn.textContent}</td><td colspan="3">gedir...</td>`;
+  $('loadRows').prepend(tr);
+  try {
+    const r = await (await fetch(`/api/compare/load?mode=${mode}&requests=${$('requests').value}&delayMs=${$('delay').value}`)).json();
+    const width = Math.min(300, Math.max(4, r.totalMs / 30));
+    tr.innerHTML = `<td>${btn.textContent}</td><td>${r.totalMs} ms</td><td><span class="bar" style="width:${width}px"></span></td><td>${r.distinctHandlerThreads}: ${r.handlerThreads.join(', ')}</td>`;
+  } finally {
+    document.querySelectorAll('button[data-mode]').forEach(b => b.disabled = false);
+  }
+});
+
+// 2. Sequential vs parallel
+async function dashboard(mode) {
+  $('dashStats').textContent = 'gedir...';
+  const r = await (await fetch(`/api/dashboard/42/${mode}`)).json();
+  $('dashStats').textContent = `${mode === 'parallel' ? 'Paralel' : 'Ardıcıl'}: ${r.elapsedMs} ms · ${r.dashboard.user}, ${r.dashboard.orders.length} sifariş, ${r.dashboard.recommendations.length} tövsiyə`;
+}
+$('seq').onclick = () => dashboard('sequential');
+$('par').onclick = () => dashboard('parallel');
+
+// 3. Chat over SSE
+$('ask').onclick = () => {
+  $('answer').textContent = '';
+  $('ask').disabled = true;
+  const start = performance.now();
+  let first = null, tokens = 0;
+  const es = new EventSource('/api/chat/stream?prompt=' + encodeURIComponent($('prompt').value));
+  es.addEventListener('token', e => {
+    if (first === null) first = ms(start);
+    tokens++;
+    $('answer').textContent += JSON.parse(e.data).text;
+    $('chatStats').textContent = `ilk söz: ${first} ms · söz sayı: ${tokens}`;
+  });
+  es.addEventListener('done', () => { es.close(); $('ask').disabled = false; $('chatStats').textContent += ` · tamamlandı: ${ms(start)} ms`; });
+  es.onerror = () => { es.close(); $('ask').disabled = false; };
+};
+
+// 4. Same Flux as NDJSON or as JSON array
+let controller = null;
+function renderRow(o) {
+  const tr = document.createElement('tr');
+  tr.innerHTML = `<td>${o.id}</td><td>${o.customer}</td><td>${o.amount}</td><td>${o.status}</td>`;
+  const body = $('rows');
+  body.appendChild(tr);
+  if (body.children.length > 200) body.removeChild(body.firstChild);
+}
+function setBusy(busy) { $('ndjson').disabled = busy; $('json').disabled = busy; $('stop').disabled = !busy; }
+async function showServerStats() {
+  const s = await (await fetch('/api/orders/stats')).json();
+  $('serverStats').textContent = `server: göndərilən sətir ${s.rowsSent} · sorğulanan səhifə ${s.pagesQueried} · tamamlanan stream ${s.completedStreams} · ləğv edilən stream ${s.cancelledStreams}`;
+}
+$('ndjson').onclick = async () => {
+  $('rows').innerHTML = ''; setBusy(true);
+  controller = new AbortController();
+  const start = performance.now();
+  let first = null, count = 0, buffer = '';
+  try {
+    const res = await fetch('/api/orders?count=' + $('count').value, { headers: { Accept: 'application/x-ndjson' }, signal: controller.signal });
+    const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += value;
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+      for (const line of lines) {
+        if (!line) continue;
+        if (first === null) first = ms(start);
+        renderRow(JSON.parse(line)); count++;
+      }
+      $('orderStats').textContent = `NDJSON · ilk sətir göstərildi: ${first} ms · alınıb: ${count}`;
+    }
+    $('orderStats').textContent += ` · tamamlandı: ${ms(start)} ms`;
+  } catch (e) {
+    $('orderStats').textContent += e.name === 'AbortError' ? ' · dayandırıldı' : ' · xəta: ' + e;
+  } finally {
+    setBusy(false);
+    setTimeout(showServerStats, 300);
+  }
+};
+$('json').onclick = async () => {
+  $('rows').innerHTML = ''; setBusy(true);
+  controller = new AbortController();
+  const start = performance.now();
+  $('orderStats').textContent = 'JSON · baytlar gəlir, amma massiv "]" gəlməyincə parse olunmur...';
+  try {
+    const res = await fetch('/api/orders?count=' + $('count').value, { headers: { Accept: 'application/json' }, signal: controller.signal });
+    const firstByte = ms(start);
+    const orders = await res.json();
+    const shown = ms(start);
+    orders.forEach(renderRow);
+    $('orderStats').textContent = `JSON · cavab başladı: ${firstByte} ms · ilk sətir göstərildi: ${shown} ms · alınıb: ${orders.length}`;
+  } catch (e) {
+    $('orderStats').textContent += e.name === 'AbortError' ? ' · dayandırıldı' : ' · xəta: ' + e;
+  } finally {
+    setBusy(false);
+    setTimeout(showServerStats, 300);
+  }
+};
+$('stop').onclick = () => controller && controller.abort();
+showServerStats();
+</script>
+</body>
+</html>

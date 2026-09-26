@@ -205,4 +205,4 @@ curl -o orders.csv "http://localhost:8080/api/orders/export.csv?count=100000"
 
 ## Növbəti addım: WebFlux
 
-Bu modulda hər açıq stream bir (virtual) thread tutur və məlumatı həmin thread "itələyir". WebFlux-da isə stream `Flux` kimi təsvir olunur və thread tutmur. Bu fərq, eləcə də backpressure növbəti modulda göstəriləcək.
+Bu modulda hər açıq stream bir (virtual) thread tutur və məlumatı həmin thread "itələyir". WebFlux-da isə stream `Flux` kimi təsvir olunur və thread tutmur. Bu fərq, eləcə də backpressure [webflux-streaming](../webflux-streaming) modulunda göstərilir.

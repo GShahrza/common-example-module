@@ -1,0 +1,11 @@
+spring:
+  application:
+    name: webflux-streaming
+
+server:
+  port: 8081
+
+streaming:
+  chat-token-delay: 60ms
+  order-page-delay: 150ms
+  order-page-size: 100
