@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="az">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spring MVC streaming</title>
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --text:#1d2330; --muted:#667085; --accent:#2563eb; --border:#e4e7ec; --ok:#16a34a; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0f1115; --card:#181b22; --text:#e6e8ec; --muted:#98a2b3; --accent:#60a5fa; --border:#2a2f3a; --ok:#4ade80; } }
+  * { box-sizing: border-box; }
+  body { margin:0; font:15px/1.5 system-ui, sans-serif; background:var(--bg); color:var(--text); }
+  main { max-width: 960px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 24px; }
+  section { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:16px; margin-bottom:16px; }
+  h2 { font-size:16px; margin:0 0 4px; }
+  .desc { color:var(--muted); margin:0 0 12px; font-size:14px; }
+  code { font-size: 13px; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  input { font:inherit; padding:6px 10px; border:1px solid var(--border); border-radius:6px; background:transparent; color:inherit; }
+  input[type=text] { flex:1; min-width:200px; }
+  input[type=number] { width:110px; }
+  button, a.btn { font:inherit; padding:6px 12px; border:1px solid var(--accent); border-radius:6px; background:var(--accent); color:#fff; cursor:pointer; text-decoration:none; }
+  button.secondary { background:transparent; color:var(--accent); }
+  button:disabled { opacity:.5; cursor:default; }
+  .out { margin-top:12px; padding:10px 12px; min-height:48px; border:1px dashed var(--border); border-radius:6px; white-space:pre-wrap; }
+  .stats { margin-top:8px; color:var(--muted); font-size:13px; font-variant-numeric: tabular-nums; }
+  .bar { height:10px; background:var(--border); border-radius:5px; overflow:hidden; margin-top:12px; }
+  .bar > div { height:100%; width:0; background:var(--ok); transition: width .2s; }
+  table { width:100%; border-collapse:collapse; margin-top:12px; font-size:13px; font-variant-numeric: tabular-nums; }
+  th, td { text-align:left; padding:4px 6px; border-bottom:1px solid var(--border); }
+  .tablewrap { max-height:240px; overflow:auto; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Spring MVC: cavabı hissə-hissə göndərmək</h1>
+  <p class="sub">Hər nümunədə server cavabı bitirməmiş brauzer məlumatı göstərməyə başlayır. Network tab-da (DevTools) cavabın necə gəldiyinə baxın.</p>
+
+  <section>
+    <h2>1. Chat cavabı: SSE (<code>SseEmitter</code>)</h2>
+    <p class="desc">ChatGPT kimi: mətn söz-söz gəlir. Brauzer tərəfdə <code>EventSource</code>.</p>
+    <div class="row">
+      <input id="prompt" type="text" value="Streaming nədir?">
+      <button id="ask">Soruş</button>
+    </div>
+    <div id="answer" class="out"></div>
+    <div id="chatStats" class="stats"></div>
+  </section>
+
+  <section>
+    <h2>2. Uzun işin gedişatı: SSE + yenidən qoşulma</h2>
+    <p class="desc">Hər hadisənin <code>id</code>-si var. Əlaqə kəsilib bərpa olunanda server qaldığı yerdən davam edir (<code>Last-Event-ID</code>).</p>
+    <div class="row">
+      <button id="startJob">İşi başlat</button>
+      <button id="disconnect" class="secondary" disabled>Əlaqəni 2 saniyəlik kəs</button>
+    </div>
+    <div class="bar"><div id="progress"></div></div>
+    <div id="jobStats" class="stats"></div>
+  </section>
+
+  <section>
+    <h2>3. Böyük siyahı: NDJSON (<code>ResponseBodyEmitter</code>) və adi JSON</h2>
+    <p class="desc">Eyni məlumat iki cür. NDJSON-da hər sətir ayrıca JSON-dur və gələn kimi göstərilir; adi JSON-da hər şey sonda bir dəfəyə gəlir. "İlk sətir" vaxtını müqayisə edin.</p>
+    <div class="row">
+      <input id="count" type="number" value="5000" min="1" max="50000">
+      <button id="ndjson">Stream (NDJSON)</button>
+      <button id="json" class="secondary">Hamısını birdən (JSON)</button>
+      <button id="stop" class="secondary" disabled>Dayandır</button>
+    </div>
+    <div id="orderStats" class="stats"></div>
+    <div class="tablewrap"><table><thead><tr><th>id</th><th>müştəri</th><th>məbləğ</th><th>status</th><th>tarix</th></tr></thead><tbody id="rows"></tbody></table></div>
+  </section>
+
+  <section>
+    <h2>4. Fayl yükləmə: CSV (<code>StreamingResponseBody</code>)</h2>
+    <p class="desc">100 000 sətir. Server faylı yaddaşda yığmır, yükləmə dərhal başlayır.</p>
+    <a class="btn" href="/api/orders/export.csv?count=100000">orders.csv yüklə</a>
+  </section>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const ms = t => Math.round(performance.now() - t) + ' ms';
+
+// 1. Chat over SSE
+$('ask').onclick = () => {
+  $('answer').textContent = '';
+  $('ask').disabled = true;
+  const start = performance.now();
+  let first = null, tokens = 0;
+  const es = new EventSource('/api/chat/stream?prompt=' + encodeURIComponent($('prompt').value));
+  es.addEventListener('token', e => {
+    if (first === null) first = ms(start);
+    tokens++;
+    $('answer').textContent += JSON.parse(e.data).text;
+    $('chatStats').textContent = `ilk söz: ${first} · söz sayı: ${tokens}`;
+  });
+  es.addEventListener('done', () => {
+    es.close();
+    $('ask').disabled = false;
+    $('chatStats').textContent += ` · tamamlandı: ${ms(start)}`;
+  });
+  // Without close() EventSource would reconnect and ask the same question again
+  es.onerror = () => { es.close(); $('ask').disabled = false; };
+};
+
+// 2. Job progress over SSE with resume
+let jobEs = null, lastId = 0, eventsUrl = null;
+function connectJob(resume) {
+  const url = resume ? `${eventsUrl}?lastEventId=${lastId}` : eventsUrl;
+  jobEs = new EventSource(url);
+  jobEs.addEventListener('progress', e => {
+    const p = JSON.parse(e.data);
+    lastId = Number(e.lastEventId);
+    $('progress').style.width = p.percent + '%';
+    $('jobStats').textContent = `${p.percent}% · ${p.message} · son event id: ${lastId}`;
+  });
+  jobEs.addEventListener('completed', () => {
+    jobEs.close();
+    $('jobStats').textContent += ' · tamamlandı';
+    $('startJob').disabled = false;
+    $('disconnect').disabled = true;
+  });
+}
+$('startJob').onclick = async () => {
+  $('startJob').disabled = true;
+  $('disconnect').disabled = false;
+  lastId = 0;
+  $('progress').style.width = '0';
+  const res = await fetch('/api/jobs', { method: 'POST' });
+  eventsUrl = (await res.json()).events;
+  connectJob(false);
+};
+$('disconnect').onclick = () => {
+  jobEs.close();
+  $('jobStats').textContent = `əlaqə kəsildi (son id ${lastId}), 2 saniyə sonra davam edir...`;
+  setTimeout(() => connectJob(true), 2000);
+};
+
+// 3. NDJSON vs plain JSON
+let controller = null;
+function renderRow(o) {
+  const tr = document.createElement('tr');
+  tr.innerHTML = `<td>${o.id}</td><td>${o.customer}</td><td>${o.amount}</td><td>${o.status}</td><td>${o.createdAt}</td>`;
+  const body = $('rows');
+  body.appendChild(tr);
+  if (body.children.length > 200) body.removeChild(body.firstChild); // keep the DOM small
+}
+function setBusy(busy) {
+  $('ndjson').disabled = busy; $('json').disabled = busy; $('stop').disabled = !busy;
+}
+$('ndjson').onclick = async () => {
+  $('rows').innerHTML = '';
+  setBusy(true);
+  controller = new AbortController();
+  const start = performance.now();
+  let first = null, count = 0, buffer = '';
+  try {
+    const res = await fetch('/api/orders/stream?count=' + $('count').value, { signal: controller.signal });
+    const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += value;
+      const lines = buffer.split('\n');
+      buffer = lines.pop(); // the last piece may be an incomplete line
+      for (const line of lines) {
+        if (!line) continue;
+        if (first === null) first = ms(start);
+        renderRow(JSON.parse(line));
+        count++;
+      }
+      $('orderStats').textContent = `NDJSON · ilk sətir: ${first} · alınıb: ${count}`;
+    }
+    $('orderStats').textContent += ` · tamamlandı: ${ms(start)}`;
+  } catch (e) {
+    $('orderStats').textContent += e.name === 'AbortError' ? ' · dayandırıldı (server də istehsalı dayandırır)' : ' · xəta: ' + e;
+  } finally {
+    setBusy(false);
+  }
+};
+$('json').onclick = async () => {
+  $('rows').innerHTML = '';
+  setBusy(true);
+  controller = new AbortController();
+  const start = performance.now();
+  $('orderStats').textContent = 'JSON · gözlənilir...';
+  try {
+    const orders = await (await fetch('/api/orders?count=' + $('count').value, { signal: controller.signal })).json();
+    const first = ms(start);
+    orders.forEach(renderRow);
+    $('orderStats').textContent = `JSON · ilk sətir: ${first} · alınıb: ${orders.length} · tamamlandı: ${ms(start)}`;
+  } catch (e) {
+    $('orderStats').textContent += e.name === 'AbortError' ? ' · dayandırıldı' : ' · xəta: ' + e;
+  } finally {
+    setBusy(false);
+  }
+};
+$('stop').onclick = () => controller && controller.abort();
+</script>
+</body>
+</html>

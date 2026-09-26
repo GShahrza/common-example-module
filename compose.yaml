@@ -1,0 +1,9 @@
+# Start everything with one command:  docker compose up --build
+services:
+  mvc-streaming:
+    build:
+      context: .
+      dockerfile: mvc-streaming/Dockerfile
+    image: common-example-module/mvc-streaming
+    ports:
+      - "8080:8080"

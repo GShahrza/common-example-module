@@ -1,0 +1,5 @@
+streaming:
+  chat-token-delay: 5ms
+  job-step-delay: 20ms
+  order-page-delay: 100ms
+  order-page-size: 100

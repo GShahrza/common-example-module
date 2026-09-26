@@ -1,0 +1,23 @@
+spring:
+  application:
+    name: mvc-streaming
+  threads:
+    virtual:
+      # Every blocked streaming request costs a cheap virtual thread instead of a platform thread
+      enabled: true
+  mvc:
+    async:
+      # Upper limit for any async/streaming response (SseEmitter, ResponseBodyEmitter, StreamingResponseBody)
+      request-timeout: 5m
+
+server:
+  port: 8080
+  compression:
+    # gzip buffers the output and would break streaming
+    enabled: false
+
+streaming:
+  chat-token-delay: 60ms
+  job-step-delay: 400ms
+  order-page-delay: 150ms
+  order-page-size: 100
