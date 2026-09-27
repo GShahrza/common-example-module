@@ -17,6 +17,8 @@ Mobil tətbiq, SPA və digər servislər üçün API-ni **stateless** qorumaq: s
 | CORS (başqa origin-dəki SPA) | `SecurityConfig.corsConfigurationSource` |
 | Test: real token-lərlə və `jwt()` ilə | `SecurityJwtTest`, `RefreshTokenTest`, `MethodSecurityTest` |
 
+📖 Kitab üslubunda izah və 30 müsahibə sualı: [23. Spring Security və JWT: API-ni stateless qorumaq](../docs/23-security-jwt.md).
+
 ## İşə salma qaydası
 
 Heç bir xarici servis lazım deyil.

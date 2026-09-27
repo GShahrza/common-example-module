@@ -1,6 +1,6 @@
 # 22. Resilience4j: xarici servis "xəstələnəndə"
 
-[← 21. Redis](21-redis.md) · [Mündəricat](README.md)
+[← 21. Redis](21-redis.md) · [Mündəricat](README.md) · Növbəti: [23. Spring Security və JWT →](23-security-jwt.md)
 
 **Hissə IV: Əlavə mövzular** · **Kod:** [`RatesClient`](../resilience/src/main/java/io/github/gshahrza/resilience/RatesClient.java), [`PartnerSimulator`](../resilience/src/main/java/io/github/gshahrza/resilience/PartnerSimulator.java), [`application.yml`](../resilience/src/main/resources/application.yml) · **Demo:** http://localhost:8089
 
@@ -511,4 +511,4 @@ Test olunmayan resilience konfiqurasiyası, çox güman ki, gözlənildiyi kimi 
 
 ---
 
-[← 21. Redis](21-redis.md) · [Mündəricat](README.md)
+[← 21. Redis](21-redis.md) · [Mündəricat](README.md) · Növbəti: [23. Spring Security və JWT →](23-security-jwt.md)

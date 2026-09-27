@@ -42,7 +42,8 @@ docker compose up --build
 20. [Kafka: event-driven arxitektura və etibarlı mesajlaşma](20-kafka.md) ([`kafka-events`](../kafka-events), http://localhost:8084) + 30 müsahibə sualı
 21. [Redis: keşləmə və yaddaşdakı məlumat strukturları](21-redis.md) ([`redis-cache`](../redis-cache), http://localhost:8088) + 30 müsahibə sualı
 22. [Resilience4j: xarici servis "xəstələnəndə"](22-resilience.md) ([`resilience`](../resilience), http://localhost:8089) + 30 müsahibə sualı
+23. [Spring Security və JWT: API-ni stateless qorumaq](23-security-jwt.md) ([`security-jwt`](../security-jwt), http://localhost:8090) + 30 müsahibə sualı
 
 ---
 
-Qısa arayış üçün modulların README-lərinə baxın: [mvc-streaming](../mvc-streaming/README.md), [webflux-streaming](../webflux-streaming/README.md), [grpc-streaming](../grpc-streaming/README.md), [spring-batch](../spring-batch/README.md), [kafka-events](../kafka-events/README.md), [redis-cache](../redis-cache/README.md), [resilience](../resilience/README.md).
+Qısa arayış üçün modulların README-lərinə baxın: [mvc-streaming](../mvc-streaming/README.md), [webflux-streaming](../webflux-streaming/README.md), [grpc-streaming](../grpc-streaming/README.md), [spring-batch](../spring-batch/README.md), [kafka-events](../kafka-events/README.md), [redis-cache](../redis-cache/README.md), [resilience](../resilience/README.md), [security-jwt](../security-jwt/README.md).
