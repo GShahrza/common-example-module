@@ -49,6 +49,8 @@ docker compose up --build
 24. [Observability: trace, metrika və log](24-observability.md) ([`observability`](../observability), http://localhost:8087) + 30 müsahibə sualı
 25. [Spring AI: generativ AI-ı backend-ə qoşmaq](25-spring-ai.md) ([`spring-ai`](../spring-ai), http://localhost:8083) + 30 müsahibə sualı
 
+🎯 Ayrıca müsahibə sualları (fəsilsiz): [WebSocket və STOMP, 30 sual](musahibe-websocket.md) ([`websocket-chat`](../websocket-chat), http://localhost:8086)
+
 ---
 
 Qısa arayış üçün modulların README-lərinə baxın: [mvc-streaming](../mvc-streaming/README.md), [webflux-streaming](../webflux-streaming/README.md), [grpc-streaming](../grpc-streaming/README.md), [spring-batch](../spring-batch/README.md), [kafka-events](../kafka-events/README.md), [redis-cache](../redis-cache/README.md), [resilience](../resilience/README.md), [security-jwt](../security-jwt/README.md), [observability](../observability/README.md), [spring-ai](../spring-ai/README.md).

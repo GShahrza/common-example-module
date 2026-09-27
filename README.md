@@ -19,7 +19,7 @@ Java 21 və Spring Boot 4 ilə backend-də tez-tez lazım olan mövzuların işl
 
 ## 📖 Bələdçi (qısa kitab)
 
-Streaming mövzuları (ilk üç modul), Spring Batch, Kafka, Redis, Resilience4j, Spring Security + JWT, Observability və Spring AI kitab üslubunda, ayrıca fəsillərdə izah olunub: həyatdan analogiya, problem, bu repodakı kodla addım-addım həll, tələlər və tapşırıqlar (4 hissə, 26 fəsil). I, II və III hissələrin (Spring MVC, WebFlux, gRPC) sonunda, həmçinin Kafka, Redis, Resilience4j, Security, Observability və Spring AI fəsillərinin sonunda 30-ar müsahibə sualı var. Digər modulların ətraflı izahı öz README-lərindədir.
+Streaming mövzuları (ilk üç modul), Spring Batch, Kafka, Redis, Resilience4j, Spring Security + JWT, Observability və Spring AI kitab üslubunda, ayrıca fəsillərdə izah olunub: həyatdan analogiya, problem, bu repodakı kodla addım-addım həll, tələlər və tapşırıqlar (4 hissə, 26 fəsil). I, II və III hissələrin (Spring MVC, WebFlux, gRPC) sonunda, həmçinin Kafka, Redis, Resilience4j, Security, Observability və Spring AI fəsillərinin sonunda 30-ar müsahibə sualı var. WebSocket üçün də ayrıca 30 sual yazılıb: [docs/musahibe-websocket.md](docs/musahibe-websocket.md). Digər modulların ətraflı izahı öz README-lərindədir.
 **[Oxumağa başla →](docs/README.md)**
 
 ## İşə salma qaydası
