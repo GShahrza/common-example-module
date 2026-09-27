@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="az">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>R2DBC</title>
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --text:#1d2330; --muted:#667085; --accent:#0f766e; --border:#e4e7ec; --ok:#16a34a; --bad:#dc2626; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0f1115; --card:#181b22; --text:#e6e8ec; --muted:#98a2b3; --accent:#5eead4; --border:#2a2f3a; --ok:#4ade80; --bad:#f87171; } }
+  * { box-sizing: border-box; }
+  body { margin:0; font:15px/1.5 system-ui, sans-serif; background:var(--bg); color:var(--text); }
+  main { max-width: 960px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 24px; }
+  section { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:16px; margin-bottom:16px; }
+  h2 { font-size:16px; margin:0 0 4px; }
+  .desc { color:var(--muted); margin:0 0 12px; font-size:14px; }
+  code { font-size: 13px; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  input, textarea { font:inherit; padding:6px 10px; border:1px solid var(--border); border-radius:6px; background:transparent; color:inherit; }
+  input[type=text] { flex:1; min-width:200px; }
+  textarea { width:100%; min-height:70px; resize:vertical; }
+  button { font:inherit; padding:6px 12px; border:1px solid var(--accent); border-radius:6px; background:var(--accent); color:#fff; cursor:pointer; }
+  button.secondary { background:transparent; color:var(--accent); }
+  button:disabled { opacity:.5; cursor:default; }
+  .out { margin-top:12px; padding:10px 12px; min-height:48px; border:1px dashed var(--border); border-radius:6px; white-space:pre-wrap; overflow-wrap:anywhere; }
+  .stats { margin-top:8px; color:var(--muted); font-size:13px; font-variant-numeric: tabular-nums; }
+  .err { color:var(--bad); }
+  .ok { color:var(--ok); }
+  .msg { margin:6px 0; } .msg b { color:var(--accent); }
+  ul.src { margin:8px 0 0; padding-left:18px; font-size:13px; color:var(--muted); }
+  pre { margin:0; white-space:pre-wrap; font-size:13px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; font-variant-numeric: tabular-nums; }
+  th, td { text-align:left; padding:4px 6px; border-bottom:1px solid var(--border); vertical-align:top; }
+  .tablewrap { max-height:260px; overflow:auto; }
+  .bar { display:inline-block; height:14px; border-radius:3px; background:var(--accent); vertical-align:middle; }
+  .bar.bad { background:var(--bad); }
+  input[type=number] { width:100px; }
+  label { color:var(--muted); font-size:14px; }
+  .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap:16px; }
+  @media (max-width: 480px) { .grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>R2DBC: bazaya bloklamadan</h1>
+  <p class="sub">WebFlux + PostgreSQL. Cədvəldə 100 000 sifariş var. Eyni 200 ms-lik sorğu (<code>pg_sleep(0.2)</code>) üç üsulla; bazadan brauzerə axın; reaktiv tranzaksiya.</p>
+
+  <section>
+    <h2>1. N paralel sorğu: R2DBC, event loop-da JDBC, ayrı pool-da JDBC</h2>
+    <p class="desc">Server-in 4 event-loop thread-i var; R2DBC və JDBC pool-larında 20 bağlantı var.</p>
+    <div class="row">
+      <label>Sorğu sayı <input type="number" id="n" value="100"></label>
+      <button id="compare">Üçünü də ölç</button>
+    </div>
+    <div class="tablewrap"><table id="compareTable"></table></div>
+  </section>
+
+  <section>
+    <h2>2. Bazadan brauzerə axın (NDJSON)</h2>
+    <p class="desc">Sətirlər PostgreSQL-dən 250-lik hissələrlə, oxunduqca gəlir: ilk sətir bütün sorğu bitməmiş görünür. "1000 sətirdən sonra dayandır" bağlantını kəsir: server bunu cancel kimi alır və bazadan oxumağı dayandırır (yolda olan, TCP buferlərindəki sətirlər istisna).</p>
+    <div class="row">
+      <label>Sətir <input type="number" id="limit" value="100000"></label>
+      <button id="stream">Tez oxu</button>
+      <button class="secondary" id="stop">1000 sətirdən sonra dayandır</button>
+    </div>
+    <div class="stats" id="streamStats"></div>
+    <div class="out"><pre id="streamOut" style="margin:0;font-size:12px;max-height:160px;overflow:auto"></pre></div>
+  </section>
+
+  <section>
+    <h2>3. Reaktiv tranzaksiya: sifariş + stok</h2>
+    <p class="desc">Stok azalır və sifariş yazılır, ya da heç biri. "Noutbuk"un stoku 5-dir.</p>
+    <div class="row">
+      <label>Miqdar <input type="number" id="qty" value="2"></label>
+      <button id="order">Noutbuk sifariş et</button>
+    </div>
+    <div class="stats" id="orderOut"></div>
+  </section>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const labels = { 'r2dbc': 'R2DBC', 'jdbc-on-event-loop': 'JDBC event loop-da (səhv)', 'jdbc-offloaded': 'JDBC boundedElastic-də' };
+
+$('compare').onclick = async () => {
+  $('compare').disabled = true;
+  const results = [];
+  for (const mode of Object.keys(labels)) {
+    results.push(await (await fetch(`/api/compare?mode=${mode}&requests=${$('n').value}`)).json());
+    render(results);
+  }
+  $('compare').disabled = false;
+};
+function render(results) {
+  const max = Math.max(...results.map(r => r.totalMillis));
+  const t = $('compareTable'); t.textContent = '';
+  const tr = t.insertRow(); ['üsul', 'cəmi', '', 'server thread-ləri'].forEach(h => { const th = document.createElement('th'); th.textContent = h; tr.append(th); });
+  results.forEach(r => {
+    const row = t.insertRow();
+    row.insertCell().textContent = labels[r.mode];
+    row.insertCell().textContent = r.totalMillis + ' ms';
+    const bar = document.createElement('span'); bar.className = 'bar' + (r.mode === 'jdbc-on-event-loop' ? ' bad' : '');
+    bar.style.width = Math.max(4, 260 * r.totalMillis / max) + 'px'; row.insertCell().append(bar);
+    row.insertCell().textContent = `${r.serverThreads.length}: ${r.serverThreads.slice(0, 4).join(', ')}${r.serverThreads.length > 4 ? ', …' : ''}`;
+  });
+}
+
+async function stream(stopAfter) {
+  const start = performance.now(); let first = null, rows = 0, shown = [];
+  const before = (await (await fetch('/api/orders/stream/fetched')).json()).rowsFetchedFromDatabase;
+  const controller = new AbortController();
+  const response = await fetch(`/api/orders/stream?limit=${$('limit').value}`, { signal: controller.signal });
+  const reader = response.body.getReader(); const decoder = new TextDecoder(); let buffer = '';
+  const update = async () => {
+    const fetched = (await (await fetch('/api/orders/stream/fetched')).json()).rowsFetchedFromDatabase - before;
+    $('streamStats').textContent = `ilk sətir: ${Math.round(first)} ms · brauzer oxudu: ${rows} · server bazadan oxudu: ${fetched} · ${Math.round(performance.now() - start)} ms`;
+  };
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n'); buffer = lines.pop();
+      for (const line of lines) {
+        if (!line) continue;
+        if (first === null) first = performance.now() - start;
+        rows++;
+        if (shown.length < 5) { shown.push(line); $('streamOut').textContent = shown.join('\n'); }
+      }
+      if (stopAfter && rows >= stopAfter) { controller.abort(); break; }
+    }
+  } catch (e) { /* aborted */ }
+  if (stopAfter) await new Promise(r => setTimeout(r, 1000));   // let the cancel reach the database
+  await update();
+  if (stopAfter) $('streamStats').textContent += ' · dayandırıldı (abort → server-də cancel)';
+}
+$('stream').onclick = () => stream(0);
+$('stop').onclick = () => stream(1000);
+
+$('order').onclick = async () => {
+  const r = await fetch('/api/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ customer: 'aynur', productId: 3, quantity: +$('qty').value }) });
+  const body = await r.json();
+  const stock = (await (await fetch('/api/products/3/stock')).json()).stock;
+  $('orderOut').textContent = `HTTP ${r.status}: ${r.ok ? 'sifariş #' + body.id + ', ' + body.amount + ' AZN' : body.error} · qalan stok: ${stock}`;
+};
+</script>
+</body>
+</html>

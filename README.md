@@ -15,6 +15,7 @@ Java 21 və Spring Boot 4 ilə backend-də tez-tez lazım olan mövzuların işl
 | [`redis-cache`](redis-cache) | Redis: `@Cacheable`/`@CachePut`/`@CacheEvict`, TTL, cache stampede (`sync`), sorted set | 8088 | ✅ |
 | [`resilience`](resilience) | Resilience4j: circuit breaker, retry, rate limiter, bulkhead, timeout, fallback | 8089 | ✅ |
 | [`security-jwt`](security-jwt) | Spring Security + JWT: login, RS256, rollar/scope-lar, IDOR qorunması, JWKS; refresh token: bazada, rotation, `HttpOnly` cookie, klientdə avtomatik refresh | 8090 | ✅ |
+| [`r2dbc`](r2dbc) | R2DBC + PostgreSQL: reaktiv CRUD, `DatabaseClient`, reaktiv tranzaksiya, bazadan NDJSON axını, R2DBC və JDBC-nin ölçülmüş müqayisəsi | 8091 | ✅ |
 
 ## 📖 Bələdçi (qısa kitab)
 
@@ -122,13 +123,27 @@ docker run -d --name redis -p 6379:6379 redis:8-alpine
 
 Ətraflı: [security-jwt/README.md](security-jwt/README.md).
 
+### r2dbc (PostgreSQL lazımdır)
+
+Ardıcıllıqla:
+
+```bash
+# 1. PostgreSQL-i işə salın
+docker run -d --name postgres -p 5432:5432 \
+  -e POSTGRES_DB=shop -e POSTGRES_USER=shop -e POSTGRES_PASSWORD=shop postgres:17-alpine
+# 2. Tətbiqi işə salın (Flyway cədvəlləri və 100 000 sifarişi yaradır)
+./gradlew :r2dbc:bootRun              # http://localhost:8091
+```
+
+Ətraflı: [r2dbc/README.md](r2dbc/README.md).
+
 ### Testlər
 
 ```bash
 ./gradlew build                       # bütün modulların testləri
 ```
 
-Kafka, Ollama və Grafana testlərdə lazım deyil (embedded Kafka, saxta modellər). `redis-cache` testləri isə real Redis-i Testcontainers ilə qaldırır, ona görə Docker işləməlidir.
+Kafka, Ollama və Grafana testlərdə lazım deyil (embedded Kafka, saxta modellər). `redis-cache` və `r2dbc` testləri isə real Redis və PostgreSQL-i Testcontainers ilə qaldırır, ona görə Docker işləməlidir.
 
 ## Struktur
 
@@ -155,7 +170,8 @@ Kafka, Ollama və Grafana testlərdə lazım deyil (embedded Kafka, saxta modell
 ├── observability/          # Micrometer, OpenTelemetry, Grafana
 ├── redis-cache/            # Redis cache, TTL, stampede
 ├── resilience/             # Resilience4j
-└── security-jwt/           # Spring Security + JWT
+├── security-jwt/           # Spring Security + JWT
+└── r2dbc/                  # R2DBC + PostgreSQL
 ```
 
 ## Hansını nə vaxt seçməli?

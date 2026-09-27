@@ -1,0 +1,31 @@
+server:
+  port: 8091
+
+spring:
+  application:
+    name: r2dbc
+  # Reactive access for the application
+  r2dbc:
+    url: r2dbc:postgresql://${DB_HOST:localhost}:5432/shop
+    username: shop
+    password: shop
+    pool:
+      max-size: 20
+  # Flyway migrates over JDBC (there is no R2DBC Flyway), with its own connection
+  flyway:
+    url: jdbc:postgresql://${DB_HOST:localhost}:5432/shop
+    user: shop
+    password: shop
+
+# A JDBC pool only for the blocking side of the comparison endpoints. Spring Boot does not create
+# one by itself when R2DBC is configured, so BlockingJdbcConfig builds it.
+blocking:
+  datasource:
+    jdbc-url: jdbc:postgresql://${DB_HOST:localhost}:5432/shop
+    username: shop
+    password: shop
+    maximum-pool-size: 20   # same as the R2DBC pool, so the comparison is fair
+
+logging:
+  level:
+    io.r2dbc.postgresql.QUERY: INFO   # DEBUG shows every SQL statement

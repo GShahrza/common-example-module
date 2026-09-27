@@ -35,3 +35,5 @@ jobs:
         run: docker build -f resilience/Dockerfile .
       - name: Docker image build (security-jwt)
         run: docker build -f security-jwt/Dockerfile .
+      - name: Docker image build (r2dbc)
+        run: docker build -f r2dbc/Dockerfile .
