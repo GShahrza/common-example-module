@@ -13,6 +13,7 @@ Java 21 və Spring Boot 4 ilə backend-də tez-tez lazım olan mövzuların işl
 | [`websocket-chat`](websocket-chat) | WebSocket + STOMP: otaqlar, şəxsi mesaj, onlayn siyahısı, xam WebSocket ilə müqayisə | 8086 | ✅ |
 | [`observability`](observability) | Micrometer + OpenTelemetry: trace (Tempo), metrika (Prometheus), log (Loki), health | 8087 | ✅ |
 | [`redis-cache`](redis-cache) | Redis: `@Cacheable`/`@CachePut`/`@CacheEvict`, TTL, cache stampede (`sync`), sorted set | 8088 | ✅ |
+| [`resilience`](resilience) | Resilience4j: circuit breaker, retry, rate limiter, bulkhead, timeout, fallback | 8089 | ✅ |
 
 ## 📖 Bələdçi (qısa kitab)
 
@@ -104,6 +105,14 @@ docker run -d --name redis -p 6379:6379 redis:8-alpine
 
 Ətraflı: [redis-cache/README.md](redis-cache/README.md).
 
+### resilience (əlavə heç nə lazım deyil)
+
+```bash
+./gradlew :resilience:bootRun         # http://localhost:8089
+```
+
+Ətraflı: [resilience/README.md](resilience/README.md).
+
 ### Testlər
 
 ```bash
@@ -111,9 +120,6 @@ docker run -d --name redis -p 6379:6379 redis:8-alpine
 ```
 
 Kafka, Ollama və Grafana testlərdə lazım deyil (embedded Kafka, saxta modellər). `redis-cache` testləri isə real Redis-i Testcontainers ilə qaldırır, ona görə Docker işləməlidir.
-
-```bash
-```
 
 ## Struktur
 
@@ -138,7 +144,8 @@ Kafka, Ollama və Grafana testlərdə lazım deyil (embedded Kafka, saxta modell
 ├── spring-batch/           # Spring Batch: CSV import, skip, restart
 ├── websocket-chat/         # WebSocket + STOMP chat
 ├── observability/          # Micrometer, OpenTelemetry, Grafana
-└── redis-cache/            # Redis cache, TTL, stampede
+├── redis-cache/            # Redis cache, TTL, stampede
+└── resilience/             # Resilience4j
 ```
 
 ## Hansını nə vaxt seçməli?

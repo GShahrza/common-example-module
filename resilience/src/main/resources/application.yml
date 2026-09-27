@@ -1,0 +1,70 @@
+server:
+  port: 8089
+
+spring:
+  application:
+    name: resilience
+  threads:
+    virtual:
+      enabled: true
+
+partner:
+  # The "partner API" lives in this application too, but is called over HTTP like a remote service
+  base-url: http://localhost:${server.port}
+  # How long we wait for an answer. Without a timeout a hanging partner blocks our threads forever.
+  read-timeout: 1s
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      partner:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10                  # look at the last 10 calls
+        minimum-number-of-calls: 5               # ...but decide only after at least 5
+        failure-rate-threshold: 50               # ≥50% failed → OPEN
+        slow-call-duration-threshold: 800ms      # a call slower than this is "slow"
+        slow-call-rate-threshold: 80             # ≥80% slow → OPEN as well
+        wait-duration-in-open-state: 10s         # stay OPEN (fail fast), then HALF_OPEN
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
+        record-exceptions:                       # these count as failures
+          - org.springframework.web.client.ResourceAccessException    # timeout, connection refused
+          - org.springframework.web.client.HttpServerErrorException   # 5xx
+        ignore-exceptions:                       # our mistake, not the partner's
+          - org.springframework.web.client.HttpClientErrorException   # 4xx
+        register-health-indicator: true
+  retry:
+    instances:
+      partner:
+        max-attempts: 3                          # 1 call + 2 retries
+        wait-duration: 200ms
+        enable-exponential-backoff: true         # 200 ms, then 400 ms
+        exponential-backoff-multiplier: 2
+        retry-exceptions:
+          - org.springframework.web.client.ResourceAccessException
+          - org.springframework.web.client.HttpServerErrorException
+        ignore-exceptions:
+          - org.springframework.web.client.HttpClientErrorException
+  ratelimiter:
+    instances:
+      partner:
+        limit-for-period: 5                      # the partner allows us 5 calls per second
+        limit-refresh-period: 1s
+        timeout-duration: 0                      # over the limit: reject at once, do not queue
+  bulkhead:
+    instances:
+      partner:
+        max-concurrent-calls: 5                  # at most 5 of our threads wait on the partner
+        max-wait-duration: 0
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, metrics, circuitbreakers, circuitbreakerevents, retries, ratelimiters, bulkheads
+  endpoint:
+    health:
+      show-details: always
+  health:
+    circuitbreakers:
+      enabled: true

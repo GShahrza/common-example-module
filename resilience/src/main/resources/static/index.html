@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="az">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Resilience4j</title>
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --text:#1d2330; --muted:#667085; --accent:#0891b2; --border:#e4e7ec; --ok:#16a34a; --bad:#dc2626; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0f1115; --card:#181b22; --text:#e6e8ec; --muted:#98a2b3; --accent:#22d3ee; --border:#2a2f3a; --ok:#4ade80; --bad:#f87171; } }
+  * { box-sizing: border-box; }
+  body { margin:0; font:15px/1.5 system-ui, sans-serif; background:var(--bg); color:var(--text); }
+  main { max-width: 960px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 24px; }
+  section { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:16px; margin-bottom:16px; }
+  h2 { font-size:16px; margin:0 0 4px; }
+  .desc { color:var(--muted); margin:0 0 12px; font-size:14px; }
+  code { font-size: 13px; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  input, textarea { font:inherit; padding:6px 10px; border:1px solid var(--border); border-radius:6px; background:transparent; color:inherit; }
+  input[type=text] { flex:1; min-width:200px; }
+  textarea { width:100%; min-height:70px; resize:vertical; }
+  button { font:inherit; padding:6px 12px; border:1px solid var(--accent); border-radius:6px; background:var(--accent); color:#fff; cursor:pointer; }
+  button.secondary { background:transparent; color:var(--accent); }
+  button:disabled { opacity:.5; cursor:default; }
+  .out { margin-top:12px; padding:10px 12px; min-height:48px; border:1px dashed var(--border); border-radius:6px; white-space:pre-wrap; overflow-wrap:anywhere; }
+  .stats { margin-top:8px; color:var(--muted); font-size:13px; font-variant-numeric: tabular-nums; }
+  .err { color:var(--bad); }
+  .ok { color:var(--ok); }
+  .msg { margin:6px 0; } .msg b { color:var(--accent); }
+  ul.src { margin:8px 0 0; padding-left:18px; font-size:13px; color:var(--muted); }
+  pre { margin:0; white-space:pre-wrap; font-size:13px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; font-variant-numeric: tabular-nums; }
+  th, td { text-align:left; padding:4px 6px; border-bottom:1px solid var(--border); vertical-align:top; }
+  .tablewrap { max-height:260px; overflow:auto; }
+  .CLOSED { color:var(--ok); } .OPEN { color:var(--bad); } .HALF_OPEN { color:var(--accent); }
+  .live { color:var(--ok); } .stale { color:var(--bad); }
+  .state { font-size:28px; font-weight:700; }
+  button.active { background:var(--accent); color:#fff; }
+  .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap:16px; }
+  @media (max-width: 480px) { .grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Resilience4j: partnyor API "xəstələnəndə"</h1>
+  <p class="sub">Biz partnyorun valyuta API-sini HTTP ilə çağırırıq: Retry → Circuit Breaker → Rate Limiter → Bulkhead → timeout (1 s). Partnyor cavab verə bilmədikdə son uğurlu məzənnə "köhnə" (stale) işarəsi ilə qaytarılır.</p>
+
+  <section>
+    <h2>1. Partnyorun vəziyyəti</h2>
+    <div class="row" id="modes">
+      <button class="secondary" data-mode="OK">OK</button>
+      <button class="secondary" data-mode="SLOW">SLOW (3 s)</button>
+      <button class="secondary" data-mode="ERROR">ERROR (500)</button>
+      <button class="secondary" data-mode="FLAKY">FLAKY (503, 503, 200)</button>
+      <button class="secondary" data-mode="BAD_REQUEST">BAD_REQUEST (400)</button>
+    </div>
+  </section>
+
+  <div class="grid">
+    <section>
+      <h2>2. Sorğu göndər</h2>
+      <div class="row">
+        <button id="one">1 sorğu</button>
+        <button class="secondary" id="ten">10 ardıcıl</button>
+        <button class="secondary" id="burst">12 paralel (rate limit)</button>
+      </div>
+      <div class="stats" id="partnerCalls"></div>
+    </section>
+    <section>
+      <h2>Circuit breaker</h2>
+      <div class="state" id="state">…</div>
+      <div class="stats" id="cbStats"></div>
+      <div class="row" style="margin-top:8px"><button class="secondary" id="reset">Reset</button></div>
+    </section>
+  </div>
+
+  <section>
+    <h2>Nəticələr</h2>
+    <p class="desc"><b>cəhd</b>: partnyora neçə HTTP sorğu getdi (0 = circuit açıqdır və ya limit dolub, şəbəkəyə heç getmədik).</p>
+    <div class="tablewrap" style="max-height:420px"><table id="results"></table></div>
+  </section>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const rows = [];
+
+function table(el, head, data) {
+  const t = $(el); t.textContent = '';
+  const tr = t.insertRow(); head.forEach(h => { const th = document.createElement('th'); th.textContent = h; tr.append(th); });
+  data.forEach(r => { const row = t.insertRow(); r.forEach(c => { const td = row.insertCell(); c instanceof Node ? td.append(c) : td.textContent = c ?? ''; }); });
+}
+const span = (cls, text) => { const s = document.createElement('span'); s.className = cls; s.textContent = text; return s; };
+
+async function call() {
+  const r = await fetch('/api/rates');
+  const b = await r.json();
+  const time = new Date().toLocaleTimeString();
+  if (b.rates) {
+    rows.unshift([time, span(b.rates.stale ? 'stale' : 'live', b.rates.stale ? 'fallback' : 'canlı'), b.rates.attempts, b.millis + ' ms',
+      span(b.circuit, b.circuit), b.rates.reason || `USD ${b.rates.rates.USD}`]);
+  } else {
+    rows.unshift([time, span('stale', 'HTTP ' + r.status), '', '', '', b.error + ': ' + (b.reason || '')]);
+  }
+  rows.length = Math.min(rows.length, 60);
+  table('results', ['vaxt', 'nəticə', 'cəhd', 'müddət', 'circuit', 'səbəb / məlumat'], rows);
+  refresh();
+}
+document.querySelectorAll('[data-mode]').forEach(b => b.onclick = async () => {
+  await fetch('/partner/mode', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: b.dataset.mode }) });
+  refresh();
+});
+$('one').onclick = call;
+$('ten').onclick = async () => { for (let i = 0; i < 10; i++) await call(); };
+$('burst').onclick = () => Promise.all(Array.from({ length: 12 }, call));
+$('reset').onclick = async () => { await fetch('/api/circuit/reset', { method: 'POST' }); refresh(); };
+
+async function refresh() {
+  try {
+    const [cb, mode] = await Promise.all([fetch('/api/circuit').then(r => r.json()), fetch('/partner/mode').then(r => r.json())]);
+    $('state').className = 'state ' + cb.state; $('state').textContent = cb.state;
+    const pct = v => v < 0 ? '—' : v.toFixed(0) + '%';
+    $('cbStats').textContent = `son ${cb.bufferedCalls} çağırış · uğursuz: ${cb.failedCalls} (${pct(cb.failureRate)}) · yavaş: ${pct(cb.slowCallRate)} · rədd edilən: ${cb.notPermittedCalls}`;
+    $('partnerCalls').textContent = `Partnyora cəmi HTTP sorğu: ${mode.calls}`;
+    document.querySelectorAll('[data-mode]').forEach(b => b.classList.toggle('active', b.dataset.mode === mode.mode));
+  } catch (e) { /* restarting */ }
+}
+setInterval(refresh, 1000); refresh();
+</script>
+</body>
+</html>
