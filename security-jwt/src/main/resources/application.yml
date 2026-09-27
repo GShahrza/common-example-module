@@ -7,11 +7,19 @@ spring:
   threads:
     virtual:
       enabled: true
+  # A file database: refresh tokens (= logins) survive a restart. Any SQL database works the same way.
+  datasource:
+    url: ${JWT_DB_URL:jdbc:h2:file:./build/security-jwt-db}
+  sql:
+    init:
+      mode: always   # runs schema.sql
 
 jwt:
   issuer: http://localhost:8090
-  access-token-ttl: 15m       # short: a stolen access token is useful only briefly
-  refresh-token-ttl: 7d       # long: the user does not have to log in every 15 minutes
+  access-token-ttl: ${JWT_ACCESS_TTL:15m}   # short: a stolen access token is useful only briefly
+  refresh-token-ttl: 7d       # idle limit: not used for 7 days → log in again
+  session-max-age: 30d        # absolute limit: even an active login ends after 30 days
+  clock-skew: 30s             # tolerance for clocks of different servers when checking exp
   # RSA key pair (PEM). Empty = a new key pair is generated at startup (fine for a demo;
   # in production load it from a secret store so that all instances and restarts share it).
   private-key: ${JWT_PRIVATE_KEY:}

@@ -51,7 +51,7 @@ class SecurityConfig {
                 .cors(Customizer.withDefaults())
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/", "/index.html", "/favicon.ico", "/error").permitAll()
-                        .requestMatchers("/api/auth/**", "/.well-known/jwks.json").permitAll()
+                        .requestMatchers("/api/auth/login", "/api/auth/refresh", "/api/auth/logout", "/.well-known/jwks.json").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/orders").hasAuthority("SCOPE_orders:write")
                         .anyRequest().authenticated())      // deny by default: a new endpoint is never public by accident
@@ -121,6 +121,7 @@ class SecurityConfig {
         cors.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE"));
         cors.setAllowedHeaders(List.of("Authorization", "Content-Type"));
         cors.setExposedHeaders(List.of("WWW-Authenticate"));
+        cors.setAllowCredentials(true);   // lets a SPA on another origin send the refresh cookie
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/api/**", cors);
         return source;

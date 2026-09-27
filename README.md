@@ -14,7 +14,7 @@ Java 21 və Spring Boot 4 ilə backend-də tez-tez lazım olan mövzuların işl
 | [`observability`](observability) | Micrometer + OpenTelemetry: trace (Tempo), metrika (Prometheus), log (Loki), health | 8087 | ✅ |
 | [`redis-cache`](redis-cache) | Redis: `@Cacheable`/`@CachePut`/`@CacheEvict`, TTL, cache stampede (`sync`), sorted set | 8088 | ✅ |
 | [`resilience`](resilience) | Resilience4j: circuit breaker, retry, rate limiter, bulkhead, timeout, fallback | 8089 | ✅ |
-| [`security-jwt`](security-jwt) | Spring Security + JWT: login, RS256, rollar/scope-lar, IDOR qorunması, refresh token rotation, JWKS | 8090 | ✅ |
+| [`security-jwt`](security-jwt) | Spring Security + JWT: login, RS256, rollar/scope-lar, IDOR qorunması, JWKS; refresh token: bazada, rotation, `HttpOnly` cookie, klientdə avtomatik refresh | 8090 | ✅ |
 
 ## 📖 Bələdçi (qısa kitab)
 

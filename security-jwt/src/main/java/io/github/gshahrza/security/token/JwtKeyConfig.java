@@ -14,7 +14,9 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.converter.RsaKeyConverters;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
-import org.springframework.security.oauth2.jwt.JwtValidators;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
+import org.springframework.security.oauth2.jwt.JwtIssuerValidator;
+import org.springframework.security.oauth2.jwt.JwtTimestampValidator;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 
@@ -49,11 +51,13 @@ class JwtKeyConfig {
         return new NimbusJwtEncoder(new ImmutableJWKSet<>(new JWKSet(rsaKey)));
     }
 
-    /** Checks signature, exp/nbf (with 60 s clock skew) and that we are the issuer. */
+    /** Checks signature, exp/nbf (with jwt.clock-skew tolerance) and that we are the issuer. */
     @Bean
     JwtDecoder jwtDecoder(RSAKey rsaKey, JwtProperties properties) throws Exception {
         NimbusJwtDecoder decoder = NimbusJwtDecoder.withPublicKey(rsaKey.toRSAPublicKey()).build();
-        decoder.setJwtValidator(JwtValidators.createDefaultWithIssuer(properties.issuer()));
+        decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
+                new JwtTimestampValidator(properties.clockSkew()),
+                new JwtIssuerValidator(properties.issuer())));
         return decoder;
     }
 
