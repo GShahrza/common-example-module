@@ -1,6 +1,6 @@
 # 25. Spring AI: generativ AI-ı backend-ə qoşmaq
 
-[← 24. Observability](24-observability.md) · [Mündəricat](README.md)
+[← 24. Observability](24-observability.md) · [Mündəricat](README.md) · Növbəti: [26. WebSocket və STOMP →](26-websocket.md)
 
 **Hissə IV: Əlavə mövzular** · **Kod:** [`ChatController`](../spring-ai/src/main/java/io/github/gshahrza/ai/chat/ChatController.java), [`ExtractController`](../spring-ai/src/main/java/io/github/gshahrza/ai/extract/ExtractController.java), [`OrderTools`](../spring-ai/src/main/java/io/github/gshahrza/ai/tools/OrderTools.java), [`DocsIngestion`](../spring-ai/src/main/java/io/github/gshahrza/ai/rag/DocsIngestion.java), [`RagController`](../spring-ai/src/main/java/io/github/gshahrza/ai/rag/RagController.java), [`FakeModels`](../spring-ai/src/test/java/io/github/gshahrza/ai/FakeModels.java) · **Demo:** http://localhost:8083
 
@@ -640,4 +640,4 @@ Metrikalar: ilk token-ə qədər vaxt (TTFT) və saniyədə token.
 
 ---
 
-[← 24. Observability](24-observability.md) · [Mündəricat](README.md)
+[← 24. Observability](24-observability.md) · [Mündəricat](README.md) · Növbəti: [26. WebSocket və STOMP →](26-websocket.md)

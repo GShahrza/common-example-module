@@ -24,7 +24,7 @@ public class RagController {
     private static final String SYSTEM = """
             Answer the question using only the context below, which comes from a book about
             backend development with Java and Spring Boot (streaming, WebFlux, gRPC, Spring Batch,
-            Kafka, Redis, resilience, security, observability, Spring AI). If the context does not
+            Kafka, Redis, resilience, security, observability, Spring AI, WebSocket). If the context does not
             contain the answer, say that the book does not cover it. Answer in the language of the question.
 
             Context:

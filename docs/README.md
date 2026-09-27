@@ -48,8 +48,7 @@ docker compose up --build
 23. [Spring Security və JWT: API-ni stateless qorumaq](23-security-jwt.md) ([`security-jwt`](../security-jwt), http://localhost:8090) + 30 müsahibə sualı
 24. [Observability: trace, metrika və log](24-observability.md) ([`observability`](../observability), http://localhost:8087) + 30 müsahibə sualı
 25. [Spring AI: generativ AI-ı backend-ə qoşmaq](25-spring-ai.md) ([`spring-ai`](../spring-ai), http://localhost:8083) + 30 müsahibə sualı
-
-🎯 Ayrıca müsahibə sualları (fəsilsiz): [WebSocket və STOMP, 30 sual](musahibe-websocket.md) ([`websocket-chat`](../websocket-chat), http://localhost:8086)
+26. [WebSocket və STOMP: real-time chat](26-websocket.md) ([`websocket-chat`](../websocket-chat), http://localhost:8086) + 30 müsahibə sualı
 
 ---
 

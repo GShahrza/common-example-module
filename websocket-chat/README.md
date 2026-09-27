@@ -14,7 +14,7 @@ Serverin **istədiyi an** klientə mesaj göndərməsi, klientin də eyni bağla
 | Handshake-də autentifikasiya | `HandshakeInterceptor`, `HandshakeHandler` |
 | Müqayisə: STOMP-suz, xam WebSocket | `RawWebSocketConfig` (`/ws/echo`) |
 
-🎯 WebSocket və STOMP üzrə 30 müsahibə sualı: [docs/musahibe-websocket.md](../docs/musahibe-websocket.md).
+📖 Kitab üslubunda izah və 30 müsahibə sualı: [26. WebSocket və STOMP: real-time chat](../docs/26-websocket.md).
 
 ## İşə salma qaydası
 

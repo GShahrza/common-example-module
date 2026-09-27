@@ -1,10 +1,437 @@
-# Müsahibə sualları: WebSocket və STOMP
+# 26. WebSocket və STOMP: real-time chat
 
-[Mündəricat](README.md) · Modul: [`websocket-chat`](../websocket-chat/README.md) (http://localhost:8086)
+[← 25. Spring AI](25-spring-ai.md) · [Mündəricat](README.md)
 
-WebSocket protokolu, STOMP, Spring-in WebSocket dəstəyi və real-time sistemlərin production problemləri üzrə ən çox verilən 30 sual. Kod nümunələri [`websocket-chat`](../websocket-chat) modulundandır. Cavabı açmazdan əvvəl özünüz cavab verməyə çalışın.
+**Hissə IV: Əlavə mövzular** · **Kod:** [`StompConfig`](../websocket-chat/src/main/java/io/github/gshahrza/chat/StompConfig.java), [`ChatController`](../websocket-chat/src/main/java/io/github/gshahrza/chat/ChatController.java), [`Presence`](../websocket-chat/src/main/java/io/github/gshahrza/chat/Presence.java), [`RawWebSocketConfig`](../websocket-chat/src/main/java/io/github/gshahrza/chat/RawWebSocketConfig.java), [`index.html`](../websocket-chat/src/main/resources/static/index.html), [`WebSocketChatTest`](../websocket-chat/src/test/java/io/github/gshahrza/chat/WebSocketChatTest.java) · **Demo:** http://localhost:8086
+
+```bash
+./gradlew :websocket-chat:bootRun
+```
+
+Heç bir xarici servis lazım deyil. Səhifəni **iki tab-da** açın, fərqli adlarla qoşulun və yazışın.
 
 ---
+
+## Həyatdan analogiya
+
+İki nəfər bir-biri ilə üç yolla danışa bilər:
+
+- **Məktub (HTTP).** Siz məktub göndərirsiniz, cavab gəlir. Qarşı tərəf sizə **özü** yaza bilməz, yalnız sizin məktubunuza cavab verə bilər. Yeni xəbər olub-olmadığını bilmək üçün hər dəqiqə "yeni nə var?" məktubu yazmalısınız. Bu, **polling**-dir.
+- **Radio (SSE).** Stansiya danışır, siz dinləyirsiniz. Xəbər dərhal çatır, amma siz radioya cavab verə bilmirsiniz. Bunun üçün ayrıca məktub (HTTP sorğusu) yazırsınız.
+- **Telefon zəngi (WebSocket).** Bir dəfə zəng edirsiniz, xətt açıq qalır, və **hər iki tərəf istədiyi an danışır**. Hər cümlə üçün yenidən nömrə yığmaq lazım deyil.
+
+Telefon xəttinin özü yalnız səs daşıyır. Konfrans zəngində isə qaydalar lazımdır: "indi kim danışır?", "bu sözü hamıya deyirəm, yoxsa yalnız Rashad-a?", "3 nömrəli otağa keçək". Bu qaydalar **STOMP**-dur: telefon xəttinin üstündə danışıq protokolu.
+
+## Problem
+
+Biznes deyir: "Saytda chat olsun: otaqlar, şəxsi mesajlar, kim onlayndır, kim yazır." HTTP ilə bunu qurmağa çalışaq:
+
+- Brauzer hər saniyə `GET /messages?after=...` göndərir. 1000 istifadəçi = saniyədə 1000 sorğu, onların çoxu boş cavab qaytarır. Gecikmə isə polling intervalı qədərdir.
+- **Long polling** gecikməni azaldır, amma hər mesajdan sonra yeni sorğu, header-lər, timeout-lar və mürəkkəb server kodu tələb edir.
+- **SSE** serverdən klientə axını yaxşı həll edir (bax: [2. Server-Sent Events](02-sse.md)), amma chat-də klient də tez-tez yazır: "yazır..." siqnalı hər düymə basılışında gedir. Hər biri üçün ayrıca HTTP `POST` göndərmək olar, amma bu, iki kanalı idarə etmək deməkdir.
+
+Lazım olan budur: **bir bağlantı, iki istiqamət, minimal overhead.**
+
+## WebSocket necə işləyir
+
+### Handshake: HTTP ilə başlayır
+
+Bağlantı adi HTTP sorğusu ilə açılır, və server razılaşanda eyni TCP bağlantısı WebSocket-ə keçir:
+
+```
+→ GET /ws?name=Aynur HTTP/1.1
+  Upgrade: websocket
+  Connection: Upgrade
+  Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==
+  Sec-WebSocket-Version: 13
+  Origin: http://localhost:8086
+
+← HTTP/1.1 101 Switching Protocols
+  Upgrade: websocket
+  Connection: Upgrade
+  Sec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=
+```
+
+`101`-dən sonra HTTP bitir. Bundan sonra bağlantıda yalnız **frame**-lər gedir: `text`, `binary`, `ping`, `pong` və `close`. Frame başlığı cəmi 2-14 baytdır; hər HTTP sorğusundakı yüzlərlə bayt header yoxdur.
+
+Handshake HTTP olduğu üçün autentifikasiya, cookie, `Origin` yoxlaması və imtina (`401`, `403`) məhz bu mərhələdə edilir. Upgrade baş verəndən sonra HTTP status kodu qaytarmaq artıq mümkün deyil.
+
+Brauzerdə bunu görmək üçün DevTools-da **Network → WS** bölməsini açın: `/ws` sorğusunun statusu `101`-dir, **Messages** tabında isə hər frame görünür.
+
+### Xam WebSocket: nə alırsınız, nə almırsınız
+
+Modulda müqayisə üçün STOMP-suz, xam handler var:
+
+```java
+@Configuration
+@EnableWebSocket
+class RawWebSocketConfig implements WebSocketConfigurer {
+
+    @Override
+    public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
+        registry.addHandler(new EchoHandler(), "/ws/echo");
+    }
+
+    static class EchoHandler extends TextWebSocketHandler {
+        @Override
+        protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
+            session.sendMessage(new TextMessage("echo: " + message.getPayload()));
+        }
+    }
+}
+```
+
+Demo səhifənin aşağısında "Xam WebSocket" bölməsi var: yazdığınız mətn `echo: ...` kimi geri qayıdır. İşləyir, amma chat üçün bu kifayət deyil. Bu mesaj hansı otağa aiddir? Kimə göndərilməlidir? Bu, adi mesajdır, "yazır..." siqnalıdır, yoxsa xəta? Xam WebSocket bu sualların heç birinə cavab vermir. Hər layihə öz JSON formatını icad edir (`{"type":"join","room":"..."}`), sonra da onun routing-ini, abunəliklərini və xəta idarəsini yazır.
+
+## STOMP: telefon xəttinin üstündə qaydalar
+
+STOMP HTTP-yə bənzəyən sadə mətn protokoludur: əmr, header-lər, boş sətir, gövdə və sonda `\0` (NUL) simvolu:
+
+```
+SEND
+destination:/app/rooms/general
+content-type:application/json
+
+{"text":"Salam"}^@
+```
+
+Əsas əmrlər bunlardır:
+
+| Klient → server | Server → klient |
+|---|---|
+| `CONNECT`: qoşulma, versiya, heartbeat | `CONNECTED`: qəbul edildi |
+| `SUBSCRIBE` (`id`, `destination`) | `MESSAGE`: abunəliyə mesaj |
+| `UNSUBSCRIBE` | `RECEIPT`: "aldım" təsdiqi |
+| `SEND` (`destination`) | `ERROR` |
+| `DISCONNECT` | |
+
+Protokolun nə qədər sadə olduğunu göstərmək üçün demo səhifədəki klient STOMP-u **kitabxanasız**, bir neçə sətirlə həyata keçirir:
+
+```javascript
+// a minimal STOMP 1.2 client: frames are "COMMAND\nheader:value\n\nbody\0"
+function frame(command, headers = {}, body = '') {
+  const text = command + '\n' + Object.entries(headers).map(([k, v]) => k + ':' + v).join('\n')
+             + '\n\n' + body + '\0';
+  ws.send(text);
+}
+```
+
+Səhifənin aşağısında göndərilən (→) və alınan (←) bütün frame-lər görünür. Real layihədə isə [`@stomp/stompjs`](https://github.com/stomp-js/stompjs) istifadə olunur: o, yenidən qoşulmanı və heartbeat-i də özü idarə edir.
+
+## Həll, addım-addım
+
+### 1. Konfiqurasiya: endpoint və broker
+
+```java
+@Configuration
+@EnableWebSocketMessageBroker
+class StompConfig implements WebSocketMessageBrokerConfigurer {
+
+    @Override
+    public void registerStompEndpoints(StompEndpointRegistry registry) {
+        registry.addEndpoint("/ws")
+                .addInterceptors(new RequireNameInterceptor())
+                .setHandshakeHandler(new NameHandshakeHandler());
+        registry.setPreserveReceiveOrder(true);
+    }
+
+    @Override
+    public void configureMessageBroker(MessageBrokerRegistry registry) {
+        registry.enableSimpleBroker("/topic", "/queue");
+        registry.setApplicationDestinationPrefixes("/app");
+        registry.setUserDestinationPrefix("/user");
+    }
+}
+```
+
+Destination prefiksləri mesajın hara gedəcəyini müəyyən edir:
+
+```
+                        /app/...                 /topic/..., /queue/...
+brauzer ──SEND──►  @MessageMapping metodu  ──►        Simple broker        ──MESSAGE──► abunəçilər
+         │                                                  ▲
+         └──────────────SEND /topic/... (birbaşa)───────────┘
+```
+
+- `/app/...` controller-ə, yəni sizin koda gedir: yoxlama, bazaya yazmaq, zənginləşdirmək.
+- `/topic/...` və `/queue/...` broker-ə gedir; broker mesajı həmin destination-a abunə olan hər sessiyaya paylayır.
+- `/user/...` istifadəçiyə xüsusi destination-lardır (addım 4).
+
+**Simple broker** Spring-in yaddaşda işləyən sadə broker-idir. Bir instance üçün kifayətdir; bir neçə instance üçün isə xarici broker lazımdır (bax: "Production").
+
+### 2. Otaq: broadcast
+
+```java
+@MessageMapping("/rooms/{room}")
+void send(@DestinationVariable String room, @Payload Incoming incoming, Principal user) {
+    String text = incoming.text() == null ? "" : incoming.text().strip();
+    if (text.isEmpty() || text.length() > 1000) {
+        throw new IllegalArgumentException("A message must be 1..1000 characters");
+    }
+    ChatMessage message = new ChatMessage(room, user.getName(), text, Instant.now());
+    // ... tarixçəyə yaz
+    messaging.convertAndSend("/topic/rooms/" + room, message);
+}
+```
+
+Spring MVC-dən tanış model: `@MessageMapping` `@RequestMapping`-ə, `@DestinationVariable` `@PathVariable`-a, `@Payload` isə `@RequestBody`-yə uyğundur. JSON Jackson ilə record-a çevrilir.
+
+Diqqət edin: göndərənin adı mesajın gövdəsindən yox, **`Principal`-dan** götürülür. Klient `{"from":"Admin"}` yazsa belə, başqasının adından danışa bilməz.
+
+Klient tərəfdə otağa qoşulmaq iki abunəlikdir:
+
+```javascript
+subscribe(`/app/rooms/${room}/history`, list => list.forEach(m => add(m)));  // bir dəfə: tarixçə
+subscribe(`/topic/rooms/${room}`, m => add(m));                              // sonrakı hər mesaj
+```
+
+### 3. Tarixçə: `@SubscribeMapping` ilə request-reply
+
+Otağa sonradan qoşulan istifadəçi əvvəlki mesajları görməlidir:
+
+```java
+@SubscribeMapping("/rooms/{room}/history")
+List<ChatMessage> history(@DestinationVariable String room) {
+    ...
+    return List.copyOf(messages);
+}
+```
+
+Klient `/app/rooms/general/history`-yə abunə olanda metodun nəticəsi **yalnız həmin klientə**, **bir dəfə** göndərilir və broker-dən keçmir. Bu, WebSocket üzərində request-reply-dır: "qoşulanda ilkin vəziyyəti al" üçün idealdır. Onlayn siyahısı da eyni üsulla alınır: `/app/online`.
+
+Modulda tarixçə yaddaşdadır və hər otaq üçün son 50 mesajı saxlayır. Real layihədə isə bazada saxlanılır.
+
+### 4. Şəxsi mesaj: `/user/...`
+
+```java
+@MessageMapping("/private/{to}")
+void privateMessage(@DestinationVariable String to, @Payload Incoming incoming, Principal user) {
+    PrivateMessage message = new PrivateMessage(user.getName(), to, incoming.text(), Instant.now());
+    messaging.convertAndSendToUser(to, "/queue/private", message);
+    messaging.convertAndSendToUser(user.getName(), "/queue/private", message);  // göndərənin öz ekranı üçün
+}
+```
+
+Hər klient eyni ünvana abunə olur: `/user/queue/private`. Spring bunu hər sessiya üçün unikal ünvana çevirir (`/queue/private-user3xk2` kimi). `convertAndSendToUser("Rashad", ...)` isə Rashad-ın **bütün sessiyalarına** (bütün tab və cihazlarına) çatır. Başqa heç kim Rashad-ın unikal ünvanını bilmir və ona abunə ola bilmir.
+
+Bunun işləməsi üçün hər sessiyanın `Principal`-ı olmalıdır. O, addım 7-də təyin olunur.
+
+### 5. "Yazır...": saxlanmayan hadisə
+
+```java
+@MessageMapping("/rooms/{room}/typing")
+void typing(@DestinationVariable String room, boolean typing, Principal user) {
+    messaging.convertAndSend("/topic/rooms/" + room + "/typing", new Typing(user.getName(), typing));
+}
+```
+
+Bu mesaj bazaya yazılmır və tarixçəyə düşmür, yalnız ötürülür. Klient hər düymə basılışında yox, yalnız vəziyyət dəyişəndə göndərir: yazmağa başlayanda `true`, 1.5 saniyə sükutdan sonra və ya mesaj göndəriləndə `false`. Hər düymə basılışında göndərmək otaqdakı hər kəsə saniyədə onlarla lazımsız mesaj deməkdir.
+
+Bu hadisələr **iki növdür**, və onları ayırmaq vacibdir. **Vəziyyət** (mesaj) saxlanmalı və itməməlidir. **Siqnal** ("yazır...", kursorun yeri) isə itsə də olar, çünki sonrakı siqnal onu əvəz edir.
+
+### 6. Kim onlayndır
+
+```java
+@EventListener
+void connected(SessionConnectedEvent event) {
+    Principal user = event.getUser();
+    if (user != null) {
+        sessions.computeIfAbsent(user.getName(), u -> new AtomicInteger()).incrementAndGet();
+        broadcast();
+    }
+}
+
+@EventListener
+void disconnected(SessionDisconnectEvent event) {
+    Principal user = event.getUser();
+    if (user != null) {
+        sessions.computeIfPresent(user.getName(), (u, count) -> count.decrementAndGet() <= 0 ? null : count);
+        broadcast();
+    }
+}
+```
+
+Bir istifadəçinin bir neçə tab-ı ola bilər, ona görə sessiyalar **sayılır**. İstifadəçi yalnız sonuncu tab bağlananda oflayn olur. `SessionDisconnectEvent` tab bağlananda, `DISCONNECT` frame-i gələndə, və şəbəkə kəsiləndə gəlir: server TCP bağlantısının bağlandığını görür. Şəbəkə səssizcə kəsilibsə (telefon tunelə girdi), bunu yalnız heartbeat aşkarlayır (bax: "Production").
+
+### 7. Autentifikasiya: handshake-də
+
+```java
+static class RequireNameInterceptor implements HandshakeInterceptor {
+    @Override
+    public boolean beforeHandshake(ServerHttpRequest request, ServerHttpResponse response,
+                                   WebSocketHandler handler, Map<String, Object> attributes) {
+        if (name(request).isEmpty()) {
+            response.setStatusCode(HttpStatus.UNAUTHORIZED);
+            return false;
+        }
+        return true;
+    }
+}
+
+static class NameHandshakeHandler extends DefaultHandshakeHandler {
+    @Override
+    protected Principal determineUser(ServerHttpRequest request, WebSocketHandler handler, Map<String, Object> attributes) {
+        String name = name(request);
+        return () -> name.length() > 20 ? name.substring(0, 20) : name;
+    }
+}
+```
+
+- `HandshakeInterceptor` upgrade-dən **əvvəl** işləyir: ad yoxdursa, adi HTTP `401` qaytarır və WebSocket açılmır.
+- `HandshakeHandler.determineUser` sessiyanın `Principal`-ını təyin edir. Bütün `@MessageMapping` metodlarına gələn `Principal user` də, `/user/...` routing-i də budur.
+
+Bu demo-da ad sadəcə URL-dən götürülür: bu, **autentifikasiya deyil**, çünki hər kəs istədiyi adı yaza bilər. Real layihədə `Principal`-ı Spring Security təyin edir:
+
+- **Cookie və HTTP sessiyası:** handshake sorğusu adi HTTP sorğusudur, Spring Security onu yoxlayır və istifadəçi avtomatik sessiyaya bağlanır.
+- **JWT:** brauzerin `WebSocket` API-si handshake-ə `Authorization` header-i əlavə etməyə imkan vermir. Ona görə token STOMP `CONNECT` frame-inin header-ində göndərilir və `ChannelInterceptor`-da yoxlanır:
+
+```java
+@Override
+public void configureClientInboundChannel(ChannelRegistration registration) {
+    registration.interceptors(new ChannelInterceptor() {
+        @Override
+        public Message<?> preSend(Message<?> message, MessageChannel channel) {
+            StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
+            if (StompCommand.CONNECT.equals(accessor.getCommand())) {
+                String token = accessor.getFirstNativeHeader("Authorization");
+                accessor.setUser(jwtAuthentication(token));   // etibarsızdırsa, exception atılır
+            }
+            return message;
+        }
+    });
+}
+```
+
+JWT və refresh token haqqında: [23. Spring Security və JWT](23-security-jwt.md).
+
+### 8. Xətanı yalnız göndərənə qaytarmaq
+
+Boş mesaj göndəriləndə `send` metodu `IllegalArgumentException` atır:
+
+```java
+@MessageExceptionHandler
+@SendToUser(destinations = "/queue/errors", broadcast = false)
+Error error(IllegalArgumentException e) {
+    return new Error(e.getMessage());
+}
+```
+
+`@MessageExceptionHandler` `@ExceptionHandler`-in analoqudur. `@SendToUser` cavabı yalnız mesajı göndərən istifadəçiyə, `broadcast = false` isə yalnız **həmin sessiyaya** (tab-a) göndərir. Xəta otağa yayımlanmır: başqaları sizin xətanızı görməməlidir.
+
+Xəta qaytarılanda JSON obyekt (record) kimi göndərilir, sadə `String` kimi yox. Bu modulu yazarkən `String` qaytarmaq mesaj converter-lərində gözlənilməz nəticə verdi; record ilə isə klient həmişə `{"message": "..."}` alır.
+
+### 9. Sıra: `setPreserveReceiveOrder`
+
+Default olaraq bir klientin frame-ləri serverdə thread pool-da **paralel** emal olunur. Klient `SUBSCRIBE /topic/rooms/general` və dərhal ardından `SEND /app/rooms/general` göndərsə, `SEND` daha tez işlənə bilər. Onda klient öz mesajını görmür.
+
+```java
+registry.setPreserveReceiveOrder(true);
+```
+
+Bu ayar bir sessiyanın frame-lərini göndərildiyi ardıcıllıqla emal edir. Müxtəlif sessiyalar isə əvvəlki kimi paralel işlənir. Chat üçün ardıcıllıq paralellikdən vacibdir.
+
+### 10. Test: real server, real klient
+
+```java
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+class WebSocketChatTest {
+
+    StompSession connect(String name) throws Exception {
+        WebSocketStompClient client = new WebSocketStompClient(new StandardWebSocketClient());
+        client.setMessageConverter(new JacksonJsonMessageConverter());
+        client.setTaskScheduler(scheduler);
+        return client.connectAsync("ws://localhost:" + port + "/ws?name=" + name,
+                new StompSessionHandlerAdapter() { }).get(5, TimeUnit.SECONDS);
+    }
+```
+
+Gələn mesajlar `BlockingQueue`-ya yığılır və `poll(5, SECONDS)` ilə gözlənilir. Şəxsi mesaj testində üç istifadəçi var, və üçüncüsünün heç nə **almadığı** yoxlanılır:
+
+```java
+aynur.send("/app/private/Rashad", Map.of("text", "gizli"));
+
+assertThat(next(rashadInbox).get("text")).isEqualTo("gizli");
+assertThat(next(aynurCopy).get("to")).isEqualTo("Rashad");
+assertThat(kamranInbox.poll(500, TimeUnit.MILLISECONDS)).isNull();
+```
+
+**Asinxron testlərin tələsi.** `session.subscribe(...)` qayıdanda server abunəliyi hələ qeydə almamış ola bilər. Dərhal `send` etsəniz, mesaj itir və test bəzən keçir, bəzən yox. STOMP-da bunun həlli `RECEIPT`-dir, amma simple broker receipt göndərmir. Modul bunu belə həll edir: abunəlikdən sonra kiçik bir request-reply (`/app/online`) edir. Server bir sessiyanın frame-lərini ardıcıl emal etdiyi üçün (addım 9) cavab gələndə abunəliyin artıq qeydə alındığı dəqiq bilinir.
+
+```bash
+./gradlew :websocket-chat:test
+```
+
+Yeddi test broadcast-ı, tarixçəni, şəxsi mesajı, onlayn siyahısını, xətanı, `401`-i və xam echo-nu yoxlayır.
+
+## Production-da nələrə diqqət etmək lazımdır
+
+| Mövzu | Problem | Nə etmək |
+|---|---|---|
+| **Bir neçə instance** | Simple broker yaddaşdadır: A-ya qoşulan istifadəçi B-dəki mesajı görmür | `enableStompBrokerRelay(...)` ilə RabbitMQ (STOMP plugin) və ya ActiveMQ; alternativ olaraq Redis pub/sub ilə öz relay-iniz |
+| **Proxy və load balancer** | nginx `Upgrade` header-ini default olaraq ötürmür; boş bağlantını 60 saniyədən sonra bağlayır | `proxy_set_header Upgrade $http_upgrade; proxy_set_header Connection "upgrade"; proxy_read_timeout 3600s;` |
+| **Heartbeat** | Səssiz bağlantını proxy bağlayır; ölü klient saatlarla "onlayn" qalır | STOMP heartbeat (`heart-beat:10000,10000`); simple broker üçün `setHeartbeatValue` + `setTaskScheduler` |
+| **Yenidən qoşulma** | Şəbəkə kəsilir, server restart olur | Klientdə backoff və jitter ilə yenidən qoşulma, abunəlikləri bərpa etmək, itən mesajları tarixçədən almaq |
+| **Yavaş klient** | Zəif şəbəkəli klientin buferi serverin yaddaşını doldurur | `setSendTimeLimit`, `setSendBufferSizeLimit`; tez-tez dəyişən dəyərlərdə yalnız sonuncunu göndərmək |
+| **Təhlükəsizlik** | Başqa saytdan qoşulma (CSWSH), böyük mesajlar, spam | `setAllowedOrigins`, `setMessageSizeLimit`, rate limit, hər `@MessageMapping`-də icazə yoxlaması |
+| **Deploy** | Instance söndürüləndə minlərlə bağlantı eyni anda qırılır və hamısı birlikdə qayıdır | Graceful shutdown, klientdə jitter, `least_conn` balanslaşdırma |
+| **Etibarlılıq** | Bağlantı qırılanda yolda olan mesajlar itir | Mesajı əvvəlcə bazaya yazmaq, id ilə dublikatları atmaq; kritik əməliyyatları HTTP ilə etmək |
+
+Bir neçə instance üçün konfiqurasiya belə görünür:
+
+```java
+registry.enableStompBrokerRelay("/topic", "/queue")
+        .setRelayHost("rabbitmq")
+        .setRelayPort(61613)
+        .setUserDestinationBroadcast("/topic/unresolved-user")   // istifadəçi başqa instance-dadırsa
+        .setUserRegistryBroadcast("/topic/user-registry");       // kim harada qoşulub, paylaşılır
+```
+
+## Nə vaxt WebSocket seçməməli
+
+- **Server yalnız xəbər verir** (bildiriş, progress bar, LLM cavabı): SSE daha sadədir, adi HTTP-dir, yenidən qoşulma isə daxilidir ([2](02-sse.md), [3](03-yeniden-qosulma.md)).
+- **Yeniləmələr nadirdir** (dəqiqədə bir): adi polling kifayətdir və heç bir infrastruktur tələb etmir.
+- **Servislər arası əlaqə:** gRPC streaming ([16. Bidirectional streaming](16-bidirectional.md)) və ya Kafka ([20](20-kafka.md)).
+- **Mobil tətbiq arxa fonda:** OS WebSocket bağlantısını tez bağlayır; bildiriş üçün push (FCM/APNs) lazımdır.
+
+Seçim cədvəli: [Sonsöz: Hansını nə vaxt seçməli?](18-secim.md).
+
+## Tələlər
+
+- **İstifadəçi adını mesajın gövdəsindən götürmək.** Göndərən həmişə `Principal`-dan müəyyən olunur, klientin dediyindən yox.
+- **Yalnız handshake-də yoxlamaq.** Autentifikasiya olunmuş istifadəçi hələ də istənilən destination-a abunə ola bilər. İcazəni hər `SUBSCRIBE` və `SEND` üçün yoxlayın.
+- **`Origin`-i yoxlamamaq.** WebSocket-ə CORS tətbiq olunmur; cookie ilə autentifikasiyada başqa sayt istifadəçinin adından qoşula bilər.
+- **Simple broker ilə bir neçə instance.** Lokal testdə hər şey işləyir, production-da isə mesajların yarısı itir.
+- **Heartbeat-siz production.** Bağlantılar 60 saniyə sükutdan sonra qırılır, "onlayn" siyahısı isə yalan göstərir.
+- **Abunəlik qeydə alınmadan göndərmək.** Klient abunə olub dərhal göndərsə, öz mesajını görməyə bilər. Testlər təsadüfi olaraq sınır.
+- **`@MessageMapping`-də bloklayan iş.** Yavaş çağırış `clientInboundChannel` pool-unu doldurur və bütün klientlər ləngiyir.
+- **Chat-də XSS.** Mesaj mətnini `innerHTML` ilə göstərməyin. Demo səhifə `textContent` istifadə edir.
+- **Hər düymə basılışında hadisə göndərmək.** Yalnız vəziyyət dəyişəndə göndərin.
+
+## Yadda saxla
+
+- WebSocket HTTP handshake (`101 Switching Protocols`) ilə başlayan, **iki istiqamətli, uzunömürlü** bağlantıdır.
+- Xam WebSocket yalnız frame daşıyır; **STOMP** onun üstünə destination-lar, abunəliklər və xətalar əlavə edir.
+- `/app/...` controller-ə, `/topic/...` və `/queue/...` broker-ə, `/user/...` isə konkret istifadəçinin bütün sessiyalarına gedir.
+- `@MessageMapping` hamıya yayım, `@SubscribeMapping` ilkin vəziyyət (request-reply), `convertAndSendToUser` şəxsi mesaj, `@SendToUser` isə göndərənə cavab üçündür.
+- `Principal` handshake-də təyin olunur; o, həm təhlükəsizliyin, həm də `/user/...` routing-inin əsasıdır.
+- Production üçün lazımdır: xarici broker, heartbeat, proxy ayarları, yenidən qoşulma, `Origin` yoxlaması, mesaj limitləri.
+- Server yalnız xəbər verirsə, SSE daha sadə seçimdir.
+
+## Tapşırıqlar
+
+1. Səhifəni iki tab-da eyni adla, üçüncü tab-da başqa adla açın. Üçüncü tab-dan birinci ada şəxsi mesaj göndərin. Mesaj neçə tab-da göründü, və niyə?
+2. DevTools-da **Network → WS** bölməsini açın. `/ws` sorğusunun status kodunu və response header-lərini tapın. Mesaj yazanda **Messages** tabında hansı frame-lər görünür?
+3. Tab-lardan birini bağlayın. İstifadəçi onlayn siyahısından nə vaxt çıxdı? Bəs brauzeri bağlamadan şəbəkəni kəssəniz (DevTools → Network → Offline)?
+4. `StompConfig`-də `setPreserveReceiveOrder(true)` sətrini silin və testləri bir neçə dəfə işə salın. Nə dəyişdi?
+5. Heartbeat əlavə edin: `enableSimpleBroker(...)`-ə `setHeartbeatValue(new long[]{10000, 10000})` və `setTaskScheduler(...)` yazın, demo səhifədə isə `heart-beat:'0,0'`-ı `'10000,10000'` ilə əvəz edin. Frame logunda nə görünməyə başladı?
+6. (Çətin) Otağa üzvlük əlavə edin: istifadəçi yalnız qoşulduğu otaqlara yaza və abunə ola bilsin. Yoxlamanı `SUBSCRIBE` üçün `ChannelInterceptor`-da, `SEND` üçün isə controller-də edin və bunu test ilə yoxlayın.
+7. (Çətin) Tətbiqi iki portda işə salın və göstərin ki, bir instance-a qoşulan istifadəçi o birindəki mesajı görmür. Sonra RabbitMQ-nu STOMP plugin-i ilə qaldırıb `enableStompBrokerRelay`-ə keçin.
+
+---
+
+## Müsahibə sualları
+
+WebSocket protokolu, STOMP, Spring-in WebSocket dəstəyi və real-time sistemlərin production problemləri üzrə ən çox verilən 30 sual. Cavabı açmazdan əvvəl özünüz cavab verməyə çalışın.
 
 ### WebSocket protokolu
 
@@ -457,4 +884,4 @@ Bu modul 1-ci və 2-ci addımların sadələşdirilmiş, bir instance-lıq varia
 
 ---
 
-[Mündəricat](README.md) · Modul: [websocket-chat](../websocket-chat/README.md)
+[← 25. Spring AI](25-spring-ai.md) · [Mündəricat](README.md)
