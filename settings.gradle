@@ -2,3 +2,4 @@ rootProject.name = 'common-example-module'
 
 include 'mvc-streaming'
 include 'webflux-streaming'
+include 'grpc-streaming'

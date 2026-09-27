@@ -1,0 +1,66 @@
+// The API contract. Server and client code are generated from this file (see build.gradle),
+// so both sides always agree on message shapes and method names.
+syntax = "proto3";
+
+package streaming.orders.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_package = "io.github.gshahrza.streaming.grpc.proto";
+
+service OrderService {
+  // 1. Unary: one request, one response (like a normal REST call)
+  rpc GetOrder(GetOrderRequest) returns (Order);
+
+  // 2. Server streaming: one request, many responses (like SSE / NDJSON)
+  rpc ListOrders(ListOrdersRequest) returns (stream Order);
+
+  // 3. Client streaming: many requests, one response (e.g. bulk upload)
+  rpc UploadOrders(stream Order) returns (UploadSummary);
+
+  // 4. Bidirectional streaming: both sides send whenever they want over one connection
+  rpc Chat(stream ChatRequest) returns (stream ChatResponse);
+}
+
+message GetOrderRequest {
+  int64 id = 1;
+}
+
+message ListOrdersRequest {
+  int32 count = 1;
+}
+
+message Order {
+  int64 id = 1;
+  string customer = 2;
+  // Decimal as string: protobuf has no decimal type and double would lose cents
+  string amount = 3;
+  Status status = 4;
+  google.protobuf.Timestamp created_at = 5;
+
+  enum Status {
+    STATUS_UNSPECIFIED = 0;
+    NEW = 1;
+    PAID = 2;
+    SHIPPED = 3;
+    DELIVERED = 4;
+  }
+}
+
+message UploadSummary {
+  int32 received = 1;
+  string total_amount = 2;
+  int64 elapsed_ms = 3;
+}
+
+message ChatRequest {
+  string question = 1;
+}
+
+message ChatResponse {
+  string question = 1;
+  string token = 2;
+  // true on the last message of an answer
+  bool done = 3;
+}

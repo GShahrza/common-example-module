@@ -1,0 +1,28 @@
+spring:
+  application:
+    name: grpc-streaming
+  threads:
+    virtual:
+      enabled: true
+  grpc:
+    server:
+      # gRPC runs on its own Netty server (HTTP/2), next to Tomcat for the browser gateway
+      port: 9090
+      # Lets tools like grpcurl list services and methods without the .proto file
+      reflection:
+        enabled: true
+    client:
+      channel:
+        # The gateway calls the gRPC service through this channel, like another microservice would
+        orders:
+          target: static://localhost:${spring.grpc.server.port}
+
+server:
+  port: 8082
+  compression:
+    enabled: false
+
+streaming:
+  chat-token-delay: 60ms
+  order-page-delay: 150ms
+  order-page-size: 100

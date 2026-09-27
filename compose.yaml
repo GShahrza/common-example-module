@@ -1,6 +1,7 @@
 # Start everything with one command:  docker compose up --build
 #   Spring MVC  -> http://localhost:8080
 #   WebFlux     -> http://localhost:8081
+#   gRPC        -> http://localhost:8082 (demo page), gRPC server on localhost:9090
 services:
   mvc-streaming:
     build:
@@ -17,3 +18,12 @@ services:
     image: common-example-module/webflux-streaming
     ports:
       - "8081:8081"
+
+  grpc-streaming:
+    build:
+      context: .
+      dockerfile: grpc-streaming/Dockerfile
+    image: common-example-module/grpc-streaming
+    ports:
+      - "8082:8082"   # HTTP gateway + demo page
+      - "9090:9090"   # native gRPC (grpcurl, other services)

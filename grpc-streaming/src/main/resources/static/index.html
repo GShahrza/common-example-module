@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="az">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>gRPC streaming</title>
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --text:#1d2330; --muted:#667085; --accent:#0f766e; --border:#e4e7ec; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0f1115; --card:#181b22; --text:#e6e8ec; --muted:#98a2b3; --accent:#2dd4bf; --border:#2a2f3a; } }
+  * { box-sizing: border-box; }
+  body { margin:0; font:15px/1.5 system-ui, sans-serif; background:var(--bg); color:var(--text); }
+  main { max-width: 960px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 16px; }
+  pre.flow { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:12px 16px; overflow-x:auto; font-size:13px; margin:0 0 16px; }
+  section { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:16px; margin-bottom:16px; }
+  h2 { font-size:16px; margin:0 0 4px; }
+  .desc { color:var(--muted); margin:0 0 12px; font-size:14px; }
+  code { font-size: 13px; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  input, textarea { font:inherit; padding:6px 10px; border:1px solid var(--border); border-radius:6px; background:transparent; color:inherit; }
+  input[type=number] { width:120px; }
+  textarea { width:100%; min-height:70px; }
+  button { font:inherit; padding:6px 12px; border:1px solid var(--accent); border-radius:6px; background:var(--accent); color:#fff; cursor:pointer; }
+  button.secondary { background:transparent; color:var(--accent); }
+  button:disabled { opacity:.5; cursor:default; }
+  .out { margin-top:12px; padding:10px 12px; min-height:40px; border:1px dashed var(--border); border-radius:6px; white-space:pre-wrap; font-size:14px; }
+  .stats { margin-top:8px; color:var(--muted); font-size:13px; font-variant-numeric: tabular-nums; }
+  .answer { margin-top:8px; }
+  .answer b { display:block; font-size:13px; color:var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <h1>gRPC: dörd çağırış növü</h1>
+  <p class="sub">Brauzer native gRPC danışa bilmir, ona görə bu səhifə gateway vasitəsilə işləyir:</p>
+  <pre class="flow">Brauzer ──HTTP (JSON / NDJSON / SSE)──► Gateway :8082 ──gRPC (HTTP/2, protobuf)──► OrderService :9090</pre>
+
+  <section>
+    <h2>1. Unary: bir sorğu → bir cavab</h2>
+    <p class="desc"><code>rpc GetOrder(GetOrderRequest) returns (Order)</code>. Adi REST çağırışına bənzəyir. 9999999 yazıb gRPC <code>NOT_FOUND</code> statusunun HTTP 404-ə çevrildiyinə baxın.</p>
+    <div class="row"><input id="orderId" type="number" value="7"><button id="getOrder">Götür</button></div>
+    <div id="orderOut" class="out"></div>
+  </section>
+
+  <section>
+    <h2>2. Server streaming: bir sorğu → çox cavab</h2>
+    <p class="desc"><code>rpc ListOrders(ListOrdersRequest) returns (stream Order)</code>. Gateway hər gələn mesajı NDJSON sətri kimi ötürür. "Dayandır" gRPC çağırışını serverdə də ləğv edir.</p>
+    <div class="row">
+      <input id="count" type="number" value="3000">
+      <button id="stream">Stream</button>
+      <button id="stop" class="secondary" disabled>Dayandır</button>
+    </div>
+    <div id="streamStats" class="stats"></div>
+    <div id="lastOrder" class="out"></div>
+  </section>
+
+  <section>
+    <h2>3. Client streaming: çox sorğu → bir cavab</h2>
+    <p class="desc"><code>rpc UploadOrders(stream Order) returns (UploadSummary)</code>. Gateway N sifarişi tək-tək göndərir, server yalnız sonda bir cavab qaytarır.</p>
+    <div class="row"><input id="uploadCount" type="number" value="10000"><button id="upload">Yüklə</button></div>
+    <div id="uploadOut" class="out"></div>
+  </section>
+
+  <section>
+    <h2>4. Bidirectional streaming: hər iki tərəf istədiyi vaxt göndərir</h2>
+    <p class="desc"><code>rpc Chat(stream ChatRequest) returns (stream ChatResponse)</code>. Suallar 300 ms fasilə ilə göndərilir, cavablar isə eyni gRPC çağırışında paralel gəlir.</p>
+    <textarea id="questions">Salam
+gRPC nədir?
+REST-dən fərqi nədir?</textarea>
+    <div class="row" style="margin-top:8px"><button id="chat">Göndər</button></div>
+    <div id="answers"></div>
+    <div id="chatStats" class="stats"></div>
+  </section>
+
+  <section>
+    <h2>Protobuf və JSON: ölçü</h2>
+    <p class="desc">Eyni 1000 sifariş binary protobuf və JSON kimi.</p>
+    <button id="size" class="secondary">Müqayisə et</button>
+    <div id="sizeOut" class="stats"></div>
+  </section>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const ms = t => Math.round(performance.now() - t);
+
+$('getOrder').onclick = async () => {
+  const res = await fetch('/api/orders/' + $('orderId').value);
+  $('orderOut').textContent = `HTTP ${res.status}\n` + JSON.stringify(await res.json(), null, 2);
+};
+
+let controller = null;
+$('stream').onclick = async () => {
+  $('stream').disabled = true; $('stop').disabled = false;
+  controller = new AbortController();
+  const start = performance.now();
+  let first = null, count = 0, buffer = '', last = null;
+  try {
+    const res = await fetch('/api/orders/stream?count=' + $('count').value, { signal: controller.signal });
+    const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += value;
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+      for (const line of lines) {
+        if (!line) continue;
+        if (first === null) first = ms(start);
+        last = JSON.parse(line); count++;
+      }
+      $('streamStats').textContent = `ilk mesaj: ${first} ms · alınıb: ${count}`;
+      $('lastOrder').textContent = 'son mesaj: ' + JSON.stringify(last);
+    }
+    $('streamStats').textContent += ` · tamamlandı: ${ms(start)} ms`;
+  } catch (e) {
+    $('streamStats').textContent += e.name === 'AbortError' ? ' · dayandırıldı (gRPC çağırışı CANCELLED)' : ' · xəta: ' + e;
+  } finally {
+    $('stream').disabled = false; $('stop').disabled = true;
+  }
+};
+$('stop').onclick = () => controller && controller.abort();
+
+$('upload').onclick = async () => {
+  $('upload').disabled = true;
+  const start = performance.now();
+  $('uploadOut').textContent = 'göndərilir...';
+  const r = await (await fetch('/api/orders/upload?count=' + $('uploadCount').value, { method: 'POST' })).json();
+  $('uploadOut').textContent = `server qəbul etdi: ${r.received} sifariş · cəmi məbləğ: ${r.totalAmount} · server vaxtı: ${r.serverElapsedMs} ms · ümumi: ${ms(start)} ms`;
+  $('upload').disabled = false;
+};
+
+$('chat').onclick = () => {
+  const questions = $('questions').value.split('\n').map(s => s.trim()).filter(Boolean);
+  if (!questions.length) return;
+  $('answers').innerHTML = '';
+  $('chat').disabled = true;
+  const blocks = {};
+  const start = performance.now();
+  const url = '/api/chat?' + questions.map(q => 'q=' + encodeURIComponent(q)).join('&');
+  const es = new EventSource(url);
+  const block = q => {
+    if (!blocks[q]) {
+      const div = document.createElement('div');
+      div.className = 'answer';
+      div.innerHTML = `<b></b><span></span>`;
+      div.querySelector('b').textContent = `${q} · ${ms(start)} ms-də başladı`;
+      $('answers').appendChild(div);
+      blocks[q] = div.querySelector('span');
+    }
+    return blocks[q];
+  };
+  es.addEventListener('token', e => { const d = JSON.parse(e.data); block(d.question).textContent += d.token; });
+  es.addEventListener('done', e => { block(JSON.parse(e.data).question).textContent += ' ✓'; });
+  es.addEventListener('end', () => { es.close(); $('chat').disabled = false; $('chatStats').textContent = `hamısı ${ms(start)} ms-də bitdi`; });
+  es.onerror = () => { es.close(); $('chat').disabled = false; };
+};
+
+$('size').onclick = async () => {
+  const r = await (await fetch('/api/size?count=1000')).json();
+  $('sizeOut').textContent = `protobuf: ${r.protobufBytes} bayt · JSON: ${r.jsonBytes} bayt · JSON ${r.ratio} dəfə böyükdür`;
+};
+</script>
+</body>
+</html>

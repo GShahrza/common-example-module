@@ -6,7 +6,7 @@ Serverdən frontend-ə cavabı **hissə-hissə** (stream) göndərməyin Java 21
 |---|---|---|---|
 | [`mvc-streaming`](mvc-streaming) | Spring MVC (servlet): SSE, NDJSON, fayl streaming | 8080 | ✅ |
 | [`webflux-streaming`](webflux-streaming) | WebFlux: adi request-lərdən fərqi (thread modeli, `Mono.zip`), reaktiv streaming, backpressure | 8081 | ✅ |
-| `grpc-streaming` | gRPC: server, client və bidirectional streaming | 9090 | planlaşdırılıb |
+| [`grpc-streaming`](grpc-streaming) | gRPC: unary, server, client və bidirectional streaming; brauzer üçün HTTP gateway | 8082 (demo), 9090 (gRPC) | ✅ |
 
 ## Bir əmrlə işə salmaq
 
@@ -19,6 +19,7 @@ docker compose up --build
 Sonra brauzerdə açın:
 - Spring MVC: **http://localhost:8080**
 - WebFlux: **http://localhost:8081**
+- gRPC: **http://localhost:8082** (demo səhifə); gRPC server `localhost:9090`
 
 Dayandırmaq üçün `Ctrl+C` və ya `docker compose down`.
 
@@ -29,6 +30,7 @@ Java 21 lazımdır:
 ```bash
 ./gradlew :mvc-streaming:bootRun     # Spring MVC, port 8080
 ./gradlew :webflux-streaming:bootRun # WebFlux, port 8081
+./gradlew :grpc-streaming:bootRun    # gRPC 9090 + gateway 8082
 ./gradlew build                      # bütün testlər
 ```
 
@@ -42,8 +44,16 @@ Java 21 lazımdır:
 │   ├── Dockerfile          # multi-stage: Gradle ilə build, JRE ilə run
 │   ├── README.md           # ətraflı izah
 │   └── src/
-└── webflux-streaming/      # WebFlux (Netty)
+├── webflux-streaming/      # WebFlux (Netty)
+│   ├── Dockerfile
+│   ├── README.md
+│   └── src/
+└── grpc-streaming/         # gRPC server + HTTP gateway
     ├── Dockerfile
     ├── README.md
-    └── src/
+    └── src/main/proto/     # API müqaviləsi (.proto)
 ```
+
+## Hansını nə vaxt seçməli?
+
+Qısa cavab [gRPC modulunun README-sinin sonundadır](grpc-streaming/README.md#üç-modulun-müqayisəsi-hansını-nə-vaxt).
