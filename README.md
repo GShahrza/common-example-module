@@ -11,6 +11,7 @@ Java 21 və Spring Boot 4 ilə backend-də tez-tez lazım olan mövzuların işl
 | [`kafka-events`](kafka-events) | Event-driven: transactional outbox, idempotent consumer, retry topic, DLT, saga | 8084 | ✅ |
 | [`spring-batch`](spring-batch) | Spring Batch 6: chunk, skip/filter, restart, JobInstance, tasklet | 8085 | ✅ |
 | [`websocket-chat`](websocket-chat) | WebSocket + STOMP: otaqlar, şəxsi mesaj, onlayn siyahısı, xam WebSocket ilə müqayisə | 8086 | ✅ |
+| [`observability`](observability) | Micrometer + OpenTelemetry: trace (Tempo), metrika (Prometheus), log (Loki), health | 8087 | ✅ |
 
 ## 📖 Bələdçi (qısa kitab)
 
@@ -76,6 +77,19 @@ docker run -d --name kafka -p 9092:9092 apache/kafka:4.1.0
 
 Ətraflı: [websocket-chat/README.md](websocket-chat/README.md).
 
+### observability (Grafana stack lazımdır)
+
+Ardıcıllıqla:
+
+```bash
+# 1. Grafana + Tempo + Loki + Prometheus + OTel Collector (bir konteyner)
+docker run -d --name lgtm -p 3000:3000 -p 4317:4317 -p 4318:4318 grafana/otel-lgtm
+# 2. Tətbiqi işə salın
+./gradlew :observability:bootRun      # http://localhost:8087, Grafana: http://localhost:3000
+```
+
+Ətraflı: [observability/README.md](observability/README.md).
+
 ### Testlər
 
 ```bash
@@ -103,7 +117,8 @@ docker run -d --name kafka -p 9092:9092 apache/kafka:4.1.0
 ├── spring-ai/              # Spring AI + Ollama
 ├── kafka-events/           # Kafka: outbox, idempotency, retry, DLT, saga
 ├── spring-batch/           # Spring Batch: CSV import, skip, restart
-└── websocket-chat/         # WebSocket + STOMP chat
+├── websocket-chat/         # WebSocket + STOMP chat
+└── observability/          # Micrometer, OpenTelemetry, Grafana
 ```
 
 ## Hansını nə vaxt seçməli?

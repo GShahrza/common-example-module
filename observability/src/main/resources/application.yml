@@ -1,0 +1,61 @@
+server:
+  port: 8087
+
+spring:
+  application:
+    name: observability
+  threads:
+    virtual:
+      enabled: true
+
+# The demo calls its own "inventory" and "payment" endpoints over HTTP, like separate services
+services:
+  base-url: http://localhost:${server.port}
+
+payment:
+  # Share of payments that fail with 502, to have errors in the dashboards
+  failure-rate: 0.1
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, metrics, prometheus
+  endpoint:
+    health:
+      show-details: always
+  observations:
+    annotations:
+      enabled: true          # @Observed on beans
+  metrics:
+    distribution:
+      # Histogram buckets for request latency: needed for p95/p99 in Grafana
+      percentiles-histogram:
+        http.server.requests: true
+        checkout.process: true
+  tracing:
+    sampling:
+      probability: 1.0       # keep every trace (demo); production often uses 0.1 or less
+    export:
+      otlp:
+        enabled: ${OTEL_EXPORT:true}
+  opentelemetry:
+    resource-attributes:
+      deployment.environment: local
+    tracing:
+      export:
+        otlp:
+          endpoint: ${OTLP_URL:http://localhost:4318}/v1/traces
+    logging:
+      export:
+        otlp:
+          endpoint: ${OTLP_URL:http://localhost:4318}/v1/logs
+  logging:
+    export:
+      enabled: ${OTEL_EXPORT:true}
+  otlp:
+    metrics:
+      export:
+        enabled: ${OTEL_EXPORT:true}
+        url: ${OTLP_URL:http://localhost:4318}/v1/metrics
+        step: 10s

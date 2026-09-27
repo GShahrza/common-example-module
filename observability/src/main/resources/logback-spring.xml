@@ -1,0 +1,13 @@
+<configuration>
+    <!-- Spring Boot's console output (the pattern already contains [app,traceId,spanId]) -->
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+
+    <!-- Every log event also goes to OpenTelemetry → OTLP → Loki, with trace and span id attached -->
+    <appender name="OTEL" class="io.opentelemetry.instrumentation.logback.appender.v1_0.OpenTelemetryAppender"/>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="OTEL"/>
+    </root>
+</configuration>

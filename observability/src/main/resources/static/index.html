@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="az">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Observability</title>
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --text:#1d2330; --muted:#667085; --accent:#ea580c; --border:#e4e7ec; --ok:#16a34a; --bad:#dc2626; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0f1115; --card:#181b22; --text:#e6e8ec; --muted:#98a2b3; --accent:#fb923c; --border:#2a2f3a; --ok:#4ade80; --bad:#f87171; } }
+  * { box-sizing: border-box; }
+  body { margin:0; font:15px/1.5 system-ui, sans-serif; background:var(--bg); color:var(--text); }
+  main { max-width: 960px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 24px; }
+  section { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:16px; margin-bottom:16px; }
+  h2 { font-size:16px; margin:0 0 4px; }
+  .desc { color:var(--muted); margin:0 0 12px; font-size:14px; }
+  code { font-size: 13px; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  input, textarea { font:inherit; padding:6px 10px; border:1px solid var(--border); border-radius:6px; background:transparent; color:inherit; }
+  input[type=text] { flex:1; min-width:200px; }
+  textarea { width:100%; min-height:70px; resize:vertical; }
+  button { font:inherit; padding:6px 12px; border:1px solid var(--accent); border-radius:6px; background:var(--accent); color:#fff; cursor:pointer; }
+  button.secondary { background:transparent; color:var(--accent); }
+  button:disabled { opacity:.5; cursor:default; }
+  .out { margin-top:12px; padding:10px 12px; min-height:48px; border:1px dashed var(--border); border-radius:6px; white-space:pre-wrap; overflow-wrap:anywhere; }
+  .stats { margin-top:8px; color:var(--muted); font-size:13px; font-variant-numeric: tabular-nums; }
+  .err { color:var(--bad); }
+  .ok { color:var(--ok); }
+  .msg { margin:6px 0; } .msg b { color:var(--accent); }
+  ul.src { margin:8px 0 0; padding-left:18px; font-size:13px; color:var(--muted); }
+  pre { margin:0; white-space:pre-wrap; font-size:13px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; font-variant-numeric: tabular-nums; }
+  th, td { text-align:left; padding:4px 6px; border-bottom:1px solid var(--border); vertical-align:top; }
+  .tablewrap { max-height:260px; overflow:auto; }
+  .success { color:var(--ok); } .out_of_stock, .payment_failed { color:var(--bad); }
+  .bar { display:inline-block; height:10px; border-radius:3px; background:var(--accent); vertical-align:middle; }
+  code.tid { font-size:12px; }
+  .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap:16px; }
+  @media (max-width: 480px) { .grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Observability: trace, metrika, log</h1>
+  <p class="sub">checkout → HTTP → inventory → HTTP → payment. Hər sorğu bir trace-dir; hər servis öz span-ını yaradır, trace id isə <code>traceparent</code> header-i ilə ötürülür. Grafana: <a href="http://localhost:3000" target="_blank">localhost:3000</a> (admin / admin).</p>
+
+  <section>
+    <h2>Sifariş ver</h2>
+    <div class="row">
+      <button data-body='{"customer":"Aynur","sku":"BOOK","quantity":1}'>Kitab</button>
+      <button data-body='{"customer":"Rashad","sku":"PHONE","quantity":1}'>Telefon</button>
+      <button class="secondary" data-body='{"customer":"Kamran","sku":"LAPTOP","quantity":1,"slowPayment":true}'>Yavaş ödəniş (1.5 s)</button>
+      <button class="secondary" data-body='{"customer":"Nigar","sku":"LAPTOP","quantity":500}'>Stokda yoxdur</button>
+      <button class="secondary" id="load">Yük: 50 sorğu</button>
+    </div>
+    <div class="stats" id="msg"></div>
+  </section>
+
+  <section>
+    <h2>Son sorğular</h2>
+    <p class="desc">Trace id-yə klikləyin: Grafana-da (Tempo) bütün span-lar, "Logs for this span" düyməsi ilə həmin sorğunun logları (Loki) açılır.</p>
+    <div class="tablewrap" style="max-height:360px"><table id="results"></table></div>
+  </section>
+
+  <div class="grid">
+    <section><h2>orders.placed (Counter)</h2><div class="tablewrap"><table id="orders"></table></div></section>
+    <section><h2>inventory.stock (Gauge)</h2><div class="tablewrap"><table id="stock"></table></div></section>
+  </div>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const results = [];
+
+function grafanaLink(traceId) {
+  const panes = { a: { datasource: 'tempo', queries: [{ refId: 'A', datasource: { type: 'tempo', uid: 'tempo' }, queryType: 'traceql', query: traceId }], range: { from: 'now-1h', to: 'now' } } };
+  return `http://localhost:3000/explore?schemaVersion=1&orgId=1&panes=${encodeURIComponent(JSON.stringify(panes))}`;
+}
+function table(el, head, rows) {
+  const t = $(el); t.textContent = '';
+  const tr = t.insertRow(); head.forEach(h => { const th = document.createElement('th'); th.textContent = h; tr.append(th); });
+  rows.forEach(r => { const row = t.insertRow(); r.forEach(c => { const td = row.insertCell(); c instanceof Node ? td.append(c) : td.textContent = c ?? ''; }); });
+}
+async function checkout(body) {
+  const r = await fetch('/api/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
+  const res = await r.json();
+  results.unshift(res); results.length = Math.min(results.length, 30);
+  render();
+}
+function render() {
+  table('results', ['status', 'trace id', 'servis: span id, ms'], results.map(res => {
+    const s = document.createElement('span'); s.className = res.status; s.textContent = res.status;
+    const a = document.createElement('a'); a.href = grafanaLink(res.traceId); a.target = '_blank';
+    const c = document.createElement('code'); c.className = 'tid'; c.textContent = res.traceId; a.append(c);
+    const hops = document.createElement('div');
+    res.hops.forEach(h => {
+      const line = document.createElement('div');
+      const bar = document.createElement('span'); bar.className = 'bar'; bar.style.width = Math.max(2, Math.min(200, h.millis / 8)) + 'px';
+      line.append(`${h.service}: ${h.spanId}, ${h.millis} ms `, bar, ` ${h.result}`);
+      hops.append(line);
+    });
+    return [s, a, hops];
+  }));
+}
+document.querySelectorAll('[data-body]').forEach(b => b.onclick = () => checkout(b.dataset.body));
+$('load').onclick = async () => {
+  $('msg').textContent = 'Göndərilir…';
+  const skus = ['BOOK', 'PHONE', 'LAPTOP'];
+  await Promise.all(Array.from({ length: 50 }, (_, i) =>
+    checkout(JSON.stringify({ customer: 'user' + (i % 7), sku: skus[i % 3], quantity: 1 }))));
+  $('msg').textContent = '50 sorğu göndərildi. Grafana → Drilldown → Metrics-də bir neçə saniyə sonra görünəcək.';
+};
+
+async function metrics() {
+  try {
+    const m = await (await fetch('/actuator/metrics/orders.placed')).json().catch(() => null);
+    const results = m?.availableTags?.find(t => t.tag === 'result')?.values || [];
+    const rows = await Promise.all(results.map(async r => {
+      const v = await (await fetch(`/actuator/metrics/orders.placed?tag=result:${r}`)).json();
+      return [r, v.measurements[0].value];
+    }));
+    table('orders', ['result', 'say'], rows);
+    const stock = await (await fetch('/api/inventory')).json();
+    table('stock', ['sku', 'stok'], Object.entries(stock));
+  } catch (e) { /* app restarting */ }
+}
+setInterval(metrics, 2000); metrics();
+</script>
+</body>
+</html>
