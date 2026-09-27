@@ -19,6 +19,7 @@ docker compose up --build
 4. [NDJSON: böyük siyahını sətir-sətir göndərmək](04-ndjson.md)
 5. [Fayl yükləmə: `StreamingResponseBody`](05-fayl-streaming.md)
 6. [Production-da streaming: görünməyən tələlər](06-production.md)
+   - 🎯 [30 müsahibə sualı: Spring MVC, servlet, SSE](musahibe-1-spring-mvc.md)
 
 ### II hissə: WebFlux ([`webflux-streaming`](../webflux-streaming), http://localhost:8081)
 7. [Event loop: WebFlux adi request-dən nə ilə fərqlənir](07-event-loop.md)
@@ -26,6 +27,7 @@ docker compose up --build
 9. [Paralel çağırışlar: `Mono.zip`](09-paralel.md)
 10. [Reaktiv streaming: `Flux` qaytarmaq kifayətdir](10-reaktiv-streaming.md)
 11. [Backpressure və ləğv](11-backpressure.md)
+   - 🎯 [30 müsahibə sualı: reaktiv proqramlaşdırma və WebFlux](musahibe-2-webflux.md)
 
 ### III hissə: gRPC ([`grpc-streaming`](../grpc-streaming), http://localhost:8082, gRPC `localhost:9090`)
 12. [gRPC nədir: müqavilə, protobuf, HTTP/2](12-grpc-nedir.md)
@@ -34,6 +36,7 @@ docker compose up --build
 15. [Client streaming: çox sorğu, bir cavab](15-client-streaming.md)
 16. [Bidirectional streaming: hər iki tərəf danışır](16-bidirectional.md)
 17. [Brauzer, gateway və gRPC alətləri](17-brauzer-ve-gateway.md)
+   - 🎯 [30 müsahibə sualı: gRPC, protobuf, HTTP/2](musahibe-3-grpc.md)
 
 **[Sonsöz: Hansını nə vaxt seçməli?](18-secim.md)**
 

@@ -118,6 +118,9 @@ assertThat(result.firstLineMillis()).isLessThan(result.totalMillis() - 500);
 1. Kiçik nginx konfiqurasiyası ilə (`proxy_pass http://mvc-streaming:8080`) layihəni `compose.yaml`-a əlavə edin. `X-Accel-Buffering` header-ini filtrdən silin və fərqi görün.
 2. `server.compression.enabled: true` və `min-response-size: 1` edin. NDJSON-un ilk sətri nə vaxt gəlir?
 
+
+🎯 I hissəni bitirdiniz. Özünüzü yoxlayın: [Spring MVC üzrə 30 müsahibə sualı](musahibe-1-spring-mvc.md).
+
 ---
 
 [← 5. Fayl yükləmə: `StreamingResponseBody`](05-fayl-streaming.md) · [Mündəricat](README.md) · Növbəti: [7. Event loop: WebFlux adi request-dən nə ilə fərqlənir →](07-event-loop.md)

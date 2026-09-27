@@ -105,6 +105,9 @@ Nəticədə 1000 səhifədən yalnız **2**-si oxundu. Demo səhifə "Dayandır"
 1. `concatMap`-i `flatMap` ilə əvəz edin və testi işə salın. `pagesQueried` neçə olur? Niyə? (İpucu: `flatMap` daxili axınlara paralel, qabaqcadan abunə olur.)
 2. Demo-da 100 000 sətirlik NDJSON başladıb 2 saniyə sonra "Dayandır" basın. Server statistikasında `pagesQueried` nə qədər artdı?
 
+
+🎯 II hissəni bitirdiniz. Özünüzü yoxlayın: [WebFlux üzrə 30 müsahibə sualı](musahibe-2-webflux.md).
+
 ---
 
 [← 10. Reaktiv streaming: `Flux` qaytarmaq kifayətdir](10-reaktiv-streaming.md) · [Mündəricat](README.md) · Növbəti: [12. gRPC nədir: müqavilə, protobuf, HTTP/2 →](12-grpc-nedir.md)

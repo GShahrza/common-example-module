@@ -109,6 +109,9 @@ Burada dörd çağırış növü, status kodları və deadline yoxlanılır ([`O
 1. `grpcurl -plaintext localhost:9090 describe streaming.orders.v1.ChatResponse` işə salın.
 2. Gateway-ə `GET /api/orders/{id}/status` əlavə edin. O, `GetOrder` çağırıb yalnız statusu qaytarsın, deadline 500 ms olsun.
 
+
+🎯 III hissəni bitirdiniz. Özünüzü yoxlayın: [gRPC üzrə 30 müsahibə sualı](musahibe-3-grpc.md).
+
 ---
 
 [← 16. Bidirectional streaming: hər iki tərəf danışır](16-bidirectional.md) · [Mündəricat](README.md) · Növbəti: [Sonsöz: Hansını nə vaxt seçməli? →](18-secim.md)
