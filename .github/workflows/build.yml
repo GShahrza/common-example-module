@@ -23,3 +23,5 @@ jobs:
         run: docker build -f spring-ai/Dockerfile .
       - name: Docker image build (kafka-events)
         run: docker build -f kafka-events/Dockerfile .
+      - name: Docker image build (spring-batch)
+        run: docker build -f spring-batch/Dockerfile .

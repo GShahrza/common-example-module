@@ -1,0 +1,21 @@
+server:
+  port: 8085
+
+spring:
+  application:
+    name: spring-batch
+  threads:
+    virtual:
+      enabled: true
+  datasource:
+    url: jdbc:h2:mem:batch;DB_CLOSE_DELAY=-1
+  batch:
+    job:
+      # Jobs are started from the REST API, not automatically at startup
+      enabled: false
+
+batch:
+  # Where generated input files are written
+  work-dir: ${java.io.tmpdir}/spring-batch-demo
+  chunk-size: 500
+  skip-limit: 100

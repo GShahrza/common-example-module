@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="az">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spring Batch</title>
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --text:#1d2330; --muted:#667085; --accent:#b45309; --border:#e4e7ec; --ok:#16a34a; --bad:#dc2626; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0f1115; --card:#181b22; --text:#e6e8ec; --muted:#98a2b3; --accent:#fbbf24; --border:#2a2f3a; --ok:#4ade80; --bad:#f87171; } }
+  * { box-sizing: border-box; }
+  body { margin:0; font:15px/1.5 system-ui, sans-serif; background:var(--bg); color:var(--text); }
+  main { max-width: 960px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 24px; }
+  section { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:16px; margin-bottom:16px; }
+  h2 { font-size:16px; margin:0 0 4px; }
+  .desc { color:var(--muted); margin:0 0 12px; font-size:14px; }
+  code { font-size: 13px; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  input, textarea { font:inherit; padding:6px 10px; border:1px solid var(--border); border-radius:6px; background:transparent; color:inherit; }
+  input[type=text] { flex:1; min-width:200px; }
+  textarea { width:100%; min-height:70px; resize:vertical; }
+  button { font:inherit; padding:6px 12px; border:1px solid var(--accent); border-radius:6px; background:var(--accent); color:#fff; cursor:pointer; }
+  button.secondary { background:transparent; color:var(--accent); }
+  button:disabled { opacity:.5; cursor:default; }
+  .out { margin-top:12px; padding:10px 12px; min-height:48px; border:1px dashed var(--border); border-radius:6px; white-space:pre-wrap; overflow-wrap:anywhere; }
+  .stats { margin-top:8px; color:var(--muted); font-size:13px; font-variant-numeric: tabular-nums; }
+  .err { color:var(--bad); }
+  .ok { color:var(--ok); }
+  .msg { margin:6px 0; } .msg b { color:var(--accent); }
+  ul.src { margin:8px 0 0; padding-left:18px; font-size:13px; color:var(--muted); }
+  pre { margin:0; white-space:pre-wrap; font-size:13px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; font-variant-numeric: tabular-nums; }
+  th, td { text-align:left; padding:4px 6px; border-bottom:1px solid var(--border); vertical-align:top; }
+  .tablewrap { max-height:260px; overflow:auto; }
+  .STARTING, .STARTED { color:var(--accent); } .COMPLETED { color:var(--ok); } .FAILED, .STOPPED { color:var(--bad); }
+  input[type=number] { width:120px; }
+  label { color:var(--muted); font-size:14px; }
+  .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap:16px; }
+  @media (max-width: 480px) { .grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Spring Batch: bank çıxarışının importu</h1>
+  <p class="sub">CSV → validasiya və AZN-ə çevirmə → <code>bank_transaction</code> (chunk-lərlə) → hesablar üzrə yekun. Səhv sətirlər atlanır (skip), sıfır məbləğlər süzülür (filter), dayanan job qaldığı yerdən davam edir (restart).</p>
+
+  <section>
+    <h2>Job-u başlat</h2>
+    <p class="desc">Fayl serverdə yaradılır. "Çökmə sətri" verilsə, writer həmin sətrə çatanda bir dəfə "baza əlaqəsi itdi" xətası atır; sonra <b>Restart</b> edin.</p>
+    <div class="row">
+      <label>Sətir sayı <input type="number" id="rows" value="200000"></label>
+      <label>Hər N-ci sətir səhv <input type="number" id="badEvery" value="2000"></label>
+      <label>Çökmə sətri <input type="number" id="crashAt" value="120000"></label>
+      <button id="start">Başlat</button>
+    </div>
+    <div class="stats" id="msg"></div>
+  </section>
+
+  <section>
+    <h2>Job execution-lar</h2>
+    <p class="desc">Sayğaclar hər commit-də bazaya (<code>BATCH_STEP_EXECUTION</code>) yazılır; səhifə onları oxuyur. Eyni fayl = eyni JobInstance; restart yeni execution yaradır.</p>
+    <div class="tablewrap" style="max-height:340px"><table id="executions"></table></div>
+  </section>
+
+  <section>
+    <h2>Nəticə <span id="fileId" class="desc"></span></h2>
+    <div class="stats" id="counts">Execution-a klikləyin.</div>
+    <div class="grid" style="margin-top:12px">
+      <div class="tablewrap"><table id="accounts"></table></div>
+      <div class="tablewrap"><table id="rejected"></table></div>
+    </div>
+  </section>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+let selectedFile = null;
+
+function table(el, head, rows) {
+  const t = $(el); t.textContent = '';
+  const tr = t.insertRow(); head.forEach(h => { const th = document.createElement('th'); th.textContent = h; tr.append(th); });
+  rows.forEach(r => { const row = t.insertRow(); r.cells.forEach(c => { const td = row.insertCell(); c instanceof Node ? td.append(c) : td.textContent = c ?? ''; });
+    if (r.onclick) { row.style.cursor = 'pointer'; row.onclick = r.onclick; } });
+}
+const fmt = n => n == null ? '' : Number(n).toLocaleString('az');
+
+$('start').onclick = async () => {
+  const body = { rows: +$('rows').value, badEvery: +$('badEvery').value, crashAtId: +$('crashAt').value || -1 };
+  const r = await fetch('/api/jobs/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const j = await r.json();
+  selectedFile = j.fileId;
+  $('msg').textContent = `HTTP ${r.status}: ${j.fileId} yaradıldı, job arxa fonda işləyir.`;
+};
+
+async function refresh() {
+  try {
+    const executions = await (await fetch('/api/jobs/executions')).json();
+    table('executions', ['exec', 'instance', 'fayl', 'status', 'step', 'read', 'write', 'filter', 'skip', 'commit', 'ms', 'səbəb', ''],
+      executions.flatMap(e => {
+        const imp = e.steps.find(s => s.name === 'import') || {};
+        const status = document.createElement('span'); status.className = e.status; status.textContent = e.status;
+        let action = '';
+        if (e.restartable && e === executions.find(x => x.instanceId === e.instanceId)) {
+          action = document.createElement('button'); action.textContent = 'Restart';
+          action.onclick = ev => { ev.stopPropagation(); fetch(`/api/jobs/executions/${e.id}/restart`, { method: 'POST' }); };
+        }
+        return [{ cells: [e.id, e.instanceId, e.file, status, e.steps.map(s => s.name).join(' → '), fmt(imp.read), fmt(imp.write), fmt(imp.filter),
+          fmt((imp.readSkip || 0) + (imp.processSkip || 0)), fmt(imp.commits), fmt(imp.millis), e.exitDescription, action],
+          onclick: () => { selectedFile = e.file; } }];
+      }));
+    if (selectedFile) {
+      const res = await (await fetch(`/api/files/${encodeURIComponent(selectedFile)}`)).json();
+      $('fileId').textContent = res.fileId;
+      $('counts').textContent = `Bazada: ${fmt(res.imported)} tranzaksiya · rədd edilən: ${fmt(res.rejected)}`;
+      table('accounts', ['hesab', 'say', 'cəmi AZN'], res.accounts.map(a => ({ cells: [a.account, fmt(a.txCount), fmt(a.totalAzn)] })));
+      table('rejected', ['sətir', 'səbəb'], res.rejectedSample.map(r => ({ cells: [r.line, r.reason] })));
+    }
+  } catch (e) { /* server restarting */ }
+}
+setInterval(refresh, 700); refresh();
+</script>
+</body>
+</html>

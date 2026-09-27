@@ -9,6 +9,7 @@ Java 21 və Spring Boot 4 ilə backend-də tez-tez lazım olan mövzuların işl
 | [`grpc-streaming`](grpc-streaming) | gRPC: unary, server, client və bidirectional streaming; brauzer üçün HTTP gateway | 8082 (demo), 9090 (gRPC) | ✅ |
 | [`spring-ai`](spring-ai) | Spring AI + Ollama: streaming chat, structured output, tool calling, RAG | 8083 | ✅ |
 | [`kafka-events`](kafka-events) | Event-driven: transactional outbox, idempotent consumer, retry topic, DLT, saga | 8084 | ✅ |
+| [`spring-batch`](spring-batch) | Spring Batch 6: chunk, skip/filter, restart, JobInstance, tasklet | 8085 | ✅ |
 
 ## 📖 Bələdçi (qısa kitab)
 
@@ -58,6 +59,14 @@ docker run -d --name kafka -p 9092:9092 apache/kafka:4.1.0
 
 Ətraflı: [kafka-events/README.md](kafka-events/README.md).
 
+### spring-batch (əlavə heç nə lazım deyil, baza H2)
+
+```bash
+./gradlew :spring-batch:bootRun       # http://localhost:8085
+```
+
+Ətraflı: [spring-batch/README.md](spring-batch/README.md).
+
 ### Testlər
 
 ```bash
@@ -83,7 +92,8 @@ docker run -d --name kafka -p 9092:9092 apache/kafka:4.1.0
 │   ├── README.md
 │   └── src/main/proto/     # API müqaviləsi (.proto)
 ├── spring-ai/              # Spring AI + Ollama
-└── kafka-events/           # Kafka: outbox, idempotency, retry, DLT, saga
+├── kafka-events/           # Kafka: outbox, idempotency, retry, DLT, saga
+└── spring-batch/           # Spring Batch: CSV import, skip, restart
 ```
 
 ## Hansını nə vaxt seçməli?
