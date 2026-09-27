@@ -101,7 +101,7 @@ Mobil API-ni brauzer API-sindən fərqləndirən məqamlar:
 - **Səhifələmə.** Mobil ekran bir anda 20 sətir göstərir. `Slice` (`hasNext`) `Page`-dən ucuzdur, çünki `COUNT(*)` sorğusu etmir.
 - **Idempotency.** Metroda şəbəkə kəsildi, tətbiq `POST`-u təkrarladı; açar olmasa, iki sifariş yaranar.
 - **Kiçik cavab.** Mobil trafik pullu və yavaşdır. Yalnız lazımi sahələri qaytarın və gzip-i yandırın (`server.compression.enabled: true`).
-- **Autentifikasiya.** OAuth2/OIDC ilə JWT (Spring Security `oauth2-resource-server`); refresh token tətbiqdə təhlükəsiz saxlanılır (Keychain, Keystore).
+- **Autentifikasiya.** OAuth2/OIDC ilə JWT (Spring Security `oauth2-resource-server`); refresh token tətbiqdə təhlükəsiz saxlanılır (Keychain, Keystore). İşlək nümunə: [security-jwt](../security-jwt/README.md).
 
 ### Android (Kotlin)
 

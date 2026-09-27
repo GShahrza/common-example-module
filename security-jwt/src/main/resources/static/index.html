@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="az">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spring Security JWT</title>
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --text:#1d2330; --muted:#667085; --accent:#4f46e5; --border:#e4e7ec; --ok:#16a34a; --bad:#dc2626; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0f1115; --card:#181b22; --text:#e6e8ec; --muted:#98a2b3; --accent:#818cf8; --border:#2a2f3a; --ok:#4ade80; --bad:#f87171; } }
+  * { box-sizing: border-box; }
+  body { margin:0; font:15px/1.5 system-ui, sans-serif; background:var(--bg); color:var(--text); }
+  main { max-width: 960px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 24px; }
+  section { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:16px; margin-bottom:16px; }
+  h2 { font-size:16px; margin:0 0 4px; }
+  .desc { color:var(--muted); margin:0 0 12px; font-size:14px; }
+  code { font-size: 13px; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  input, textarea { font:inherit; padding:6px 10px; border:1px solid var(--border); border-radius:6px; background:transparent; color:inherit; }
+  input[type=text] { flex:1; min-width:200px; }
+  textarea { width:100%; min-height:70px; resize:vertical; }
+  button { font:inherit; padding:6px 12px; border:1px solid var(--accent); border-radius:6px; background:var(--accent); color:#fff; cursor:pointer; }
+  button.secondary { background:transparent; color:var(--accent); }
+  button:disabled { opacity:.5; cursor:default; }
+  .out { margin-top:12px; padding:10px 12px; min-height:48px; border:1px dashed var(--border); border-radius:6px; white-space:pre-wrap; overflow-wrap:anywhere; }
+  .stats { margin-top:8px; color:var(--muted); font-size:13px; font-variant-numeric: tabular-nums; }
+  .err { color:var(--bad); }
+  .ok { color:var(--ok); }
+  .msg { margin:6px 0; } .msg b { color:var(--accent); }
+  ul.src { margin:8px 0 0; padding-left:18px; font-size:13px; color:var(--muted); }
+  pre { margin:0; white-space:pre-wrap; font-size:13px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; font-variant-numeric: tabular-nums; }
+  th, td { text-align:left; padding:4px 6px; border-bottom:1px solid var(--border); vertical-align:top; }
+  .tablewrap { max-height:260px; overflow:auto; }
+  .s2 { color:var(--ok); font-weight:600; } .s4, .s5 { color:var(--bad); font-weight:600; }
+  pre { margin:0; white-space:pre-wrap; overflow-wrap:anywhere; font-size:12px; }
+  .jwt span { overflow-wrap:anywhere; font:12px ui-monospace, monospace; }
+  .h { color:#dc2626; } .p { color:#7c3aed; } .sig { color:#0891b2; }
+  .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap:16px; }
+  @media (max-width: 480px) { .grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Spring Security + JWT</h1>
+  <p class="sub">Login → access token (JWT, 15 dəq) + refresh token. Hər sorğuda <code>Authorization: Bearer &lt;token&gt;</code> header-i göndərilir; server sessiya saxlamır, token-in imzasını yoxlayır.</p>
+
+  <section>
+    <h2>1. Login</h2>
+    <div class="row">
+      <button data-user="aynur">aynur (USER)</button>
+      <button data-user="rashad">rashad (USER)</button>
+      <button data-user="admin">admin (USER, ADMIN)</button>
+      <button class="secondary" id="badLogin">Yanlış parol</button>
+    </div>
+    <p class="desc" style="margin-top:8px">Parollar: <code>aynur123</code>, <code>rashad123</code>, <code>admin123</code>. Token yalnız bu səhifənin yaddaşında (JS dəyişənində) saxlanılır.</p>
+  </section>
+
+  <div class="grid">
+    <section>
+      <h2>Access token</h2>
+      <div class="stats" id="expiry">login olunmayıb</div>
+      <div class="jwt out" id="raw"></div>
+      <p class="desc"><span class="h">header</span> . <span class="p">payload</span> . <span class="sig">imza</span>. Payload şifrələnməyib, sadəcə Base64-dür:</p>
+      <div class="out"><pre id="decoded"></pre></div>
+    </section>
+    <section>
+      <h2>2. API çağır</h2>
+      <div class="row">
+        <button data-get="/api/me">GET /api/me</button>
+        <button data-get="/api/orders">GET /api/orders</button>
+        <button class="secondary" id="create">POST /api/orders</button>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <button class="secondary" data-get="/api/users/aynur/orders">aynur-un sifarişləri</button>
+        <button class="secondary" data-get="/api/users/rashad/orders">rashad-ın sifarişləri</button>
+        <button class="secondary" data-get="/api/admin/sessions">GET /api/admin/sessions</button>
+      </div>
+      <h2 style="margin-top:14px">3. Hücum və token həyat dövrü</h2>
+      <div class="row">
+        <button class="secondary" id="noToken">Token-siz</button>
+        <button class="secondary" id="forge">Payload-da rolu ADMIN et</button>
+        <button class="secondary" id="refresh">Refresh</button>
+        <button class="secondary" id="reuse">Köhnə refresh token-i yenidən işlət</button>
+        <button class="secondary" id="logout">Logout</button>
+      </div>
+    </section>
+  </div>
+
+  <section>
+    <h2>Sorğular</h2>
+    <div class="tablewrap" style="max-height:420px"><table id="log"></table></div>
+  </section>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+let access = null, refreshToken = null, oldRefresh = null;
+const rows = [];
+
+const b64 = s => new TextDecoder().decode(Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0)));
+const toB64 = s => btoa(String.fromCharCode(...new TextEncoder().encode(s))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+function showToken() {
+  $('raw').textContent = ''; $('decoded').textContent = '';
+  if (!access) { $('expiry').textContent = 'login olunmayıb'; return; }
+  const [h, p, s] = access.split('.');
+  [[h, 'h'], [p, 'p'], [s, 'sig']].forEach(([part, cls], i) => {
+    const span = document.createElement('span'); span.className = cls; span.textContent = part;
+    $('raw').append(span); if (i < 2) $('raw').append('.');
+  });
+  $('decoded').textContent = JSON.stringify(JSON.parse(b64(h)), null, 2) + '\n' + JSON.stringify(JSON.parse(b64(p)), null, 2);
+}
+setInterval(() => {
+  if (!access) return;
+  const exp = JSON.parse(b64(access.split('.')[1])).exp * 1000;
+  const left = Math.round((exp - Date.now()) / 1000);
+  $('expiry').textContent = left > 0 ? `Bitməsinə ${Math.floor(left / 60)} dəq ${left % 60} san` : 'Token-in vaxtı bitib: Refresh edin';
+}, 1000);
+
+function log(method, url, r, body, note) {
+  const status = document.createElement('span'); status.className = 's' + String(r.status)[0]; status.textContent = r.status;
+  const challenge = r.headers.get('WWW-Authenticate');
+  rows.unshift([new Date().toLocaleTimeString(), `${method} ${url}`, note || '', status,
+    (challenge ? 'WWW-Authenticate: ' + challenge + '\n' : '') + body.slice(0, 400)]);
+  rows.length = Math.min(rows.length, 50);
+  const t = $('log'); t.textContent = '';
+  const tr = t.insertRow(); ['vaxt', 'sorğu', 'qeyd', 'status', 'cavab'].forEach(h => { const th = document.createElement('th'); th.textContent = h; tr.append(th); });
+  rows.forEach(r => { const row = t.insertRow(); r.forEach(c => { const td = row.insertCell(); if (c instanceof Node) td.append(c); else { const pre = document.createElement('pre'); pre.textContent = c; td.append(pre); } }); });
+}
+async function request(method, url, { token = access, body, note } = {}) {
+  const headers = {};
+  if (token) headers.Authorization = 'Bearer ' + token;
+  if (body) headers['Content-Type'] = 'application/json';
+  const r = await fetch(url, { method, headers, body: body && JSON.stringify(body) });
+  const text = await r.text();
+  log(method, url, r, text, note);
+  return { r, json: text ? JSON.parse(text) : null };
+}
+async function login(username, password, note) {
+  const { r, json } = await request('POST', '/api/auth/login', { token: null, body: { username, password }, note });
+  if (r.ok) { access = json.access_token; refreshToken = json.refresh_token; oldRefresh = null; showToken(); }
+}
+document.querySelectorAll('[data-user]').forEach(b => b.onclick = () => login(b.dataset.user, b.dataset.user + '123', b.dataset.user));
+$('badLogin').onclick = () => login('aynur', 'wrong', 'yanlış parol');
+document.querySelectorAll('[data-get]').forEach(b => b.onclick = () => request('GET', b.dataset.get));
+$('create').onclick = () => request('POST', '/api/orders', { body: { product: 'Qələm', amount: 3.5 } });
+$('noToken').onclick = () => request('GET', '/api/me', { token: null, note: 'header yoxdur' });
+$('forge').onclick = () => {
+  if (!access) return;
+  const [h, p, s] = access.split('.');
+  const payload = JSON.parse(b64(p)); payload.roles = ['USER', 'ADMIN'];
+  request('GET', '/api/admin/sessions', { token: `${h}.${toB64(JSON.stringify(payload))}.${s}`, note: 'payload dəyişdirilib, imza köhnədir' });
+};
+$('refresh').onclick = async () => {
+  if (!refreshToken) return;
+  const { r, json } = await request('POST', '/api/auth/refresh', { token: null, body: { refresh_token: refreshToken }, note: 'rotation' });
+  if (r.ok) { oldRefresh = refreshToken; access = json.access_token; refreshToken = json.refresh_token; showToken(); }
+};
+$('reuse').onclick = async () => {
+  if (!oldRefresh) { alert('Əvvəl "Refresh" basın: köhnə token ondan sonra yaranır.'); return; }
+  await request('POST', '/api/auth/refresh', { token: null, body: { refresh_token: oldRefresh }, note: 'oğurlanmış köhnə token' });
+  await request('POST', '/api/auth/refresh', { token: null, body: { refresh_token: refreshToken }, note: 'həqiqi istifadəçinin yeni token-i da ləğv olunub' });
+};
+$('logout').onclick = async () => {
+  if (refreshToken) await request('POST', '/api/auth/logout', { token: null, body: { refresh_token: refreshToken } });
+  access = null; refreshToken = null; oldRefresh = null; showToken();
+};
+</script>
+</body>
+</html>

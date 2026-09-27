@@ -1,0 +1,22 @@
+server:
+  port: 8090
+
+spring:
+  application:
+    name: security-jwt
+  threads:
+    virtual:
+      enabled: true
+
+jwt:
+  issuer: http://localhost:8090
+  access-token-ttl: 15m       # short: a stolen access token is useful only briefly
+  refresh-token-ttl: 7d       # long: the user does not have to log in every 15 minutes
+  # RSA key pair (PEM). Empty = a new key pair is generated at startup (fine for a demo;
+  # in production load it from a secret store so that all instances and restarts share it).
+  private-key: ${JWT_PRIVATE_KEY:}
+  public-key: ${JWT_PUBLIC_KEY:}
+
+# Browsers on other origins (a React app on :5173) may call the API
+cors:
+  allowed-origins: http://localhost:5173, http://localhost:3000

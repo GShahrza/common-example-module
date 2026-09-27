@@ -33,3 +33,5 @@ jobs:
         run: docker build -f redis-cache/Dockerfile .
       - name: Docker image build (resilience)
         run: docker build -f resilience/Dockerfile .
+      - name: Docker image build (security-jwt)
+        run: docker build -f security-jwt/Dockerfile .

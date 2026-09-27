@@ -14,6 +14,7 @@ Java 21 və Spring Boot 4 ilə backend-də tez-tez lazım olan mövzuların işl
 | [`observability`](observability) | Micrometer + OpenTelemetry: trace (Tempo), metrika (Prometheus), log (Loki), health | 8087 | ✅ |
 | [`redis-cache`](redis-cache) | Redis: `@Cacheable`/`@CachePut`/`@CacheEvict`, TTL, cache stampede (`sync`), sorted set | 8088 | ✅ |
 | [`resilience`](resilience) | Resilience4j: circuit breaker, retry, rate limiter, bulkhead, timeout, fallback | 8089 | ✅ |
+| [`security-jwt`](security-jwt) | Spring Security + JWT: login, RS256, rollar/scope-lar, IDOR qorunması, refresh token rotation, JWKS | 8090 | ✅ |
 
 ## 📖 Bələdçi (qısa kitab)
 
@@ -113,6 +114,14 @@ docker run -d --name redis -p 6379:6379 redis:8-alpine
 
 Ətraflı: [resilience/README.md](resilience/README.md).
 
+### security-jwt (əlavə heç nə lazım deyil)
+
+```bash
+./gradlew :security-jwt:bootRun       # http://localhost:8090 (aynur / aynur123, admin / admin123)
+```
+
+Ətraflı: [security-jwt/README.md](security-jwt/README.md).
+
 ### Testlər
 
 ```bash
@@ -145,7 +154,8 @@ Kafka, Ollama və Grafana testlərdə lazım deyil (embedded Kafka, saxta modell
 ├── websocket-chat/         # WebSocket + STOMP chat
 ├── observability/          # Micrometer, OpenTelemetry, Grafana
 ├── redis-cache/            # Redis cache, TTL, stampede
-└── resilience/             # Resilience4j
+├── resilience/             # Resilience4j
+└── security-jwt/           # Spring Security + JWT
 ```
 
 ## Hansını nə vaxt seçməli?
