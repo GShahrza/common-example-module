@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="az">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kafka events</title>
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --text:#1d2330; --muted:#667085; --accent:#2563eb; --border:#e4e7ec; --ok:#16a34a; --bad:#dc2626; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0f1115; --card:#181b22; --text:#e6e8ec; --muted:#98a2b3; --accent:#60a5fa; --border:#2a2f3a; --ok:#4ade80; --bad:#f87171; } }
+  * { box-sizing: border-box; }
+  body { margin:0; font:15px/1.5 system-ui, sans-serif; background:var(--bg); color:var(--text); }
+  main { max-width: 960px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 24px; }
+  section { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:16px; margin-bottom:16px; }
+  h2 { font-size:16px; margin:0 0 4px; }
+  .desc { color:var(--muted); margin:0 0 12px; font-size:14px; }
+  code { font-size: 13px; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  input, textarea { font:inherit; padding:6px 10px; border:1px solid var(--border); border-radius:6px; background:transparent; color:inherit; }
+  input[type=text] { flex:1; min-width:200px; }
+  textarea { width:100%; min-height:70px; resize:vertical; }
+  button { font:inherit; padding:6px 12px; border:1px solid var(--accent); border-radius:6px; background:var(--accent); color:#fff; cursor:pointer; }
+  button.secondary { background:transparent; color:var(--accent); }
+  button:disabled { opacity:.5; cursor:default; }
+  .out { margin-top:12px; padding:10px 12px; min-height:48px; border:1px dashed var(--border); border-radius:6px; white-space:pre-wrap; overflow-wrap:anywhere; }
+  .stats { margin-top:8px; color:var(--muted); font-size:13px; font-variant-numeric: tabular-nums; }
+  .err { color:var(--bad); }
+  .ok { color:var(--ok); }
+  .msg { margin:6px 0; } .msg b { color:var(--accent); }
+  ul.src { margin:8px 0 0; padding-left:18px; font-size:13px; color:var(--muted); }
+  pre { margin:0; white-space:pre-wrap; font-size:13px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; font-variant-numeric: tabular-nums; }
+  th, td { text-align:left; padding:4px 6px; border-bottom:1px solid var(--border); vertical-align:top; }
+  .tablewrap { max-height:260px; overflow:auto; }
+  .PENDING { color:var(--muted); } .CONFIRMED { color:var(--ok); } .CANCELLED { color:var(--bad); }
+  .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap:16px; }
+  @media (max-width: 480px) { .grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Event-driven: Kafka ilə sifariş saga-sı</h1>
+  <p class="sub">Sifariş → outbox → <code>orders</code> topic → ödəniş (idempotent, retry, DLT) → outbox → <code>payments</code> topic → sifariş statusu. Cədvəllər hər saniyə yenilənir.</p>
+
+  <section>
+    <h2>Sifariş ver</h2>
+    <p class="desc">≤ 1000: ödəniş keçir (CONFIRMED). &gt; 1000: rədd (CANCELLED, kompensasiya). <b>13</b>: ödəniş gateway-i "işləmir" → 2 retry → DLT → CANCELLED.</p>
+    <div class="row">
+      <input type="text" id="customer" value="Aynur" style="flex:0 1 160px">
+      <input type="text" id="amount" value="250" style="flex:0 1 120px">
+      <button id="place">Sifariş ver</button>
+      <button class="secondary" data-amount="5000">5000 (rədd)</button>
+      <button class="secondary" data-amount="13">13 (DLT)</button>
+    </div>
+    <div class="stats" id="stats"></div>
+  </section>
+
+  <section>
+    <h2>Sifarişlər</h2>
+    <p class="desc">"Təkrar göndər" eyni event-i (eyni <code>eventId</code>) Kafka-ya bir də göndərir. Ödəniş ikinci dəfə çıxılmır.</p>
+    <div class="tablewrap"><table id="orders"></table></div>
+  </section>
+
+  <div class="grid">
+    <section><h2>Ödənişlər</h2><p class="desc">Atlanan dublikat event-lər: <b id="dup">0</b></p><div class="tablewrap"><table id="payments"></table></div></section>
+    <section><h2>Dead letters (DLT)</h2><div class="tablewrap"><table id="dlt"></table></div></section>
+  </div>
+  <section>
+    <h2>Outbox</h2>
+    <p class="desc">Biznes dəyişikliyi ilə eyni tranzaksiyada yazılan event-lər. "published" boşdursa, relay hələ göndərməyib (Kafka söndürülübsə, burada yığılır).</p>
+    <div class="tablewrap"><table id="outbox"></table></div>
+  </section>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const time = t => t ? new Date(t).toLocaleTimeString() : '';
+
+function table(el, head, rows) {
+  const t = $(el); t.textContent = '';
+  const tr = t.insertRow(); head.forEach(h => { const th = document.createElement('th'); th.textContent = h; tr.append(th); });
+  rows.forEach(r => { const row = t.insertRow(); r.forEach(c => { const td = row.insertCell(); c instanceof Node ? td.append(c) : td.textContent = c ?? ''; }); });
+}
+
+async function place(amount) {
+  const r = await fetch('/api/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ customer: $('customer').value, amount }) });
+  const o = await r.json();
+  $('stats').textContent = r.ok ? `HTTP ${r.status}: sifariş #${o.id} ${o.status}. Qalanı asinxron baş verir.` : `HTTP ${r.status}: ${o.detail || 'xəta'}`;
+  refresh();
+}
+$('place').onclick = () => place($('amount').value);
+document.querySelectorAll('[data-amount]').forEach(b => b.onclick = () => place(b.dataset.amount));
+
+async function refresh() {
+  try {
+    const [orders, payments, dlt, outbox, stats] = await Promise.all(
+      ['/api/orders', '/api/payments', '/api/dead-letters', '/api/outbox', '/api/stats'].map(u => fetch(u).then(r => r.json())));
+    table('orders', ['#', 'müştəri', 'məbləğ', 'status', 'səbəb', ''], orders.map(o => {
+      const status = document.createElement('span'); status.className = o.status; status.textContent = o.status;
+      const b = document.createElement('button'); b.className = 'secondary'; b.textContent = 'Təkrar göndər';
+      b.onclick = () => fetch(`/api/orders/${o.id}/replay`, { method: 'POST' });
+      return [o.id, o.customer, o.amount, status, o.reason, b];
+    }));
+    table('payments', ['#', 'sifariş', 'məbləğ', 'nəticə'], payments.map(p => [p.id, p.orderId, p.amount, p.success ? 'OK' : p.reason]));
+    table('dlt', ['sifariş', 'topic', 'xəta', 'vaxt'], dlt.map(d => [d.messageKey, d.topic, d.error, time(d.createdAt)]));
+    table('outbox', ['type', 'topic', 'key', 'created', 'published'], outbox.map(e => [e.type, e.topic, e.messageKey, time(e.createdAt), time(e.publishedAt) || '⏳']));
+    $('dup').textContent = stats.duplicatesSkipped;
+  } catch (e) { /* server restarting */ }
+}
+setInterval(refresh, 1000); refresh();
+</script>
+</body>
+</html>

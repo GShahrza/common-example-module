@@ -1,0 +1,28 @@
+server:
+  port: 8084
+
+spring:
+  application:
+    name: kafka-events
+  threads:
+    virtual:
+      enabled: true
+  datasource:
+    url: jdbc:h2:mem:events;DB_CLOSE_DELAY=-1
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: create-drop
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      # The broker keeps each message once even if the producer retries
+      acks: all
+      properties:
+        enable.idempotence: true
+    consumer:
+      group-id: kafka-events
+      auto-offset-reset: earliest
+
+outbox:
+  poll-interval: 300ms

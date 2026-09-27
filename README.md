@@ -8,6 +8,7 @@ Java 21 və Spring Boot 4 ilə backend-də tez-tez lazım olan mövzuların işl
 | [`webflux-streaming`](webflux-streaming) | WebFlux: adi request-lərdən fərqi (thread modeli, `Mono.zip`), reaktiv streaming, backpressure | 8081 | ✅ |
 | [`grpc-streaming`](grpc-streaming) | gRPC: unary, server, client və bidirectional streaming; brauzer üçün HTTP gateway | 8082 (demo), 9090 (gRPC) | ✅ |
 | [`spring-ai`](spring-ai) | Spring AI + Ollama: streaming chat, structured output, tool calling, RAG | 8083 | ✅ |
+| [`kafka-events`](kafka-events) | Event-driven: transactional outbox, idempotent consumer, retry topic, DLT, saga | 8084 | ✅ |
 
 ## 📖 Bələdçi (qısa kitab)
 
@@ -44,6 +45,19 @@ docker exec ollama ollama pull nomic-embed-text
 
 Ətraflı: [spring-ai/README.md](spring-ai/README.md).
 
+### kafka-events (Kafka lazımdır)
+
+Ardıcıllıqla:
+
+```bash
+# 1. Kafka-nı işə salın (KRaft, ZooKeeper-siz)
+docker run -d --name kafka -p 9092:9092 apache/kafka:4.1.0
+# 2. Tətbiqi işə salın
+./gradlew :kafka-events:bootRun       # http://localhost:8084
+```
+
+Ətraflı: [kafka-events/README.md](kafka-events/README.md).
+
 ### Testlər
 
 ```bash
@@ -68,10 +82,8 @@ docker exec ollama ollama pull nomic-embed-text
 │   ├── Dockerfile
 │   ├── README.md
 │   └── src/main/proto/     # API müqaviləsi (.proto)
-└── spring-ai/              # Spring AI + Ollama
-    ├── Dockerfile
-    ├── README.md
-    └── src/
+├── spring-ai/              # Spring AI + Ollama
+└── kafka-events/           # Kafka: outbox, idempotency, retry, DLT, saga
 ```
 
 ## Hansını nə vaxt seçməli?

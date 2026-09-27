@@ -21,3 +21,5 @@ jobs:
         run: docker compose build
       - name: Docker image build (spring-ai)
         run: docker build -f spring-ai/Dockerfile .
+      - name: Docker image build (kafka-events)
+        run: docker build -f kafka-events/Dockerfile .
