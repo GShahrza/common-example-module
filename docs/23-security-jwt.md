@@ -1,6 +1,6 @@
 # 23. Spring Security və JWT: API-ni stateless qorumaq
 
-[← 22. Resilience4j](22-resilience.md) · [Mündəricat](README.md)
+[← 22. Resilience4j](22-resilience.md) · [Mündəricat](README.md) · Növbəti: [24. Observability →](24-observability.md)
 
 **Hissə IV: Əlavə mövzular** · **Kod:** [`SecurityConfig`](../security-jwt/src/main/java/io/github/gshahrza/security/SecurityConfig.java), [`TokenService`](../security-jwt/src/main/java/io/github/gshahrza/security/token/TokenService.java), [`JwtKeyConfig`](../security-jwt/src/main/java/io/github/gshahrza/security/token/JwtKeyConfig.java), [`RefreshTokenStore`](../security-jwt/src/main/java/io/github/gshahrza/security/token/RefreshTokenStore.java), [`AuthController`](../security-jwt/src/main/java/io/github/gshahrza/security/auth/AuthController.java), [`OrderController`](../security-jwt/src/main/java/io/github/gshahrza/security/api/OrderController.java) · **Demo:** http://localhost:8090
 
@@ -613,4 +613,4 @@ Bu modulda hər iki növ var (20 test).
 
 ---
 
-[← 22. Resilience4j](22-resilience.md) · [Mündəricat](README.md)
+[← 22. Resilience4j](22-resilience.md) · [Mündəricat](README.md) · Növbəti: [24. Observability →](24-observability.md)

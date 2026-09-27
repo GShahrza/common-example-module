@@ -10,6 +10,8 @@ Production-da "sistem yavaşdır" və ya "sifarişim keçmədi" şikayəti gəl�
 
 Üçü **trace id** ilə bir-birinə bağlanır: metrika qrafikindəki sıçrayışdan həmin anın trace-inə, trace-dən isə o sorğunun loglarına keçmək olur.
 
+📖 Kitab üslubunda izah və 30 müsahibə sualı: [24. Observability: trace, metrika və log](../docs/24-observability.md).
+
 ## İşə salma qaydası
 
 Ardıcıllıqla:

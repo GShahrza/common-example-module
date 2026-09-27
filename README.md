@@ -19,7 +19,7 @@ Java 21 və Spring Boot 4 ilə backend-də tez-tez lazım olan mövzuların işl
 
 ## 📖 Bələdçi (qısa kitab)
 
-Streaming mövzuları (ilk üç modul), Spring Batch, Kafka, Redis, Resilience4j və Spring Security + JWT kitab üslubunda, ayrıca fəsillərdə izah olunub: həyatdan analogiya, problem, bu repodakı kodla addım-addım həll, tələlər və tapşırıqlar (4 hissə, 24 fəsil). Kafka, Redis, Resilience4j və Security fəsillərinin sonunda 30-ar müsahibə sualı var. Digər modulların ətraflı izahı öz README-lərindədir.
+Streaming mövzuları (ilk üç modul), Spring Batch, Kafka, Redis, Resilience4j, Spring Security + JWT və Observability kitab üslubunda, ayrıca fəsillərdə izah olunub: həyatdan analogiya, problem, bu repodakı kodla addım-addım həll, tələlər və tapşırıqlar (4 hissə, 25 fəsil). Kafka, Redis, Resilience4j, Security və Observability fəsillərinin sonunda 30-ar müsahibə sualı var. Digər modulların ətraflı izahı öz README-lərindədir.
 **[Oxumağa başla →](docs/README.md)**
 
 ## İşə salma qaydası
