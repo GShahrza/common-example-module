@@ -10,6 +10,8 @@ Mikroservislər arasında event-lərlə işləməyin production-da ən çox rast
 | Mesaj heç cür emal olunmur | **Dead letter topic (DLT)** | `@DltHandler` |
 | Bir neçə servisə yayılmış əməliyyat (distributed transaction yoxdur) | **Saga + kompensasiya** | `OrderService.apply` |
 
+📖 Kitab üslubunda izah və 30 müsahibə sualı: [20. Kafka: event-driven arxitektura və etibarlı mesajlaşma](../docs/20-kafka.md).
+
 ## İşə salma qaydası
 
 Ardıcıllıqla:

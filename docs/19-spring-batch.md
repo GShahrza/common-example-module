@@ -1,6 +1,6 @@
 # 19. Spring Batch: böyük faylı etibarlı emal etmək
 
-[← Sonsöz: Hansını nə vaxt seçməli?](18-secim.md) · [Mündəricat](README.md)
+[← Sonsöz: Hansını nə vaxt seçməli?](18-secim.md) · [Mündəricat](README.md) · Növbəti: [20. Kafka →](20-kafka.md)
 
 **Hissə IV: Əlavə mövzular** · **Kod:** [`ImportJobConfig`](../spring-batch/src/main/java/io/github/gshahrza/batch/ImportJobConfig.java), [`TransactionProcessor`](../spring-batch/src/main/java/io/github/gshahrza/batch/TransactionProcessor.java), [`RejectedRowListener`](../spring-batch/src/main/java/io/github/gshahrza/batch/RejectedRowListener.java), [`JobService`](../spring-batch/src/main/java/io/github/gshahrza/batch/JobService.java) · **Demo:** http://localhost:8085 (`./gradlew :spring-batch:bootRun`)
 
@@ -350,4 +350,4 @@ Bir tələ: uğursuzluğun səbəbi (`EXIT_MESSAGE`) stack trace-dir və **2500 
 
 ---
 
-[← Sonsöz: Hansını nə vaxt seçməli?](18-secim.md) · [Mündəricat](README.md)
+[← Sonsöz: Hansını nə vaxt seçməli?](18-secim.md) · [Mündəricat](README.md) · Növbəti: [20. Kafka →](20-kafka.md)
