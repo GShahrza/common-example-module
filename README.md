@@ -14,7 +14,7 @@ Java 21 və Spring Boot 4 ilə backend-də tez-tez lazım olan mövzuların işl
 
 ## 📖 Bələdçi (qısa kitab)
 
-Hər mövzu kitab üslubunda, ayrıca fəsildə izah olunub: həyatdan analogiya, problem, bu repodakı kodla addım-addım həll, tələlər və tapşırıqlar. 3 hissə, 19 fəsil.
+Streaming mövzuları (ilk üç modul) kitab üslubunda, ayrıca fəsillərdə izah olunub: həyatdan analogiya, problem, bu repodakı kodla addım-addım həll, tələlər və tapşırıqlar (3 hissə, 19 fəsil). Digər modulların ətraflı izahı öz README-lərindədir.
 **[Oxumağa başla →](docs/README.md)**
 
 ## İşə salma qaydası
