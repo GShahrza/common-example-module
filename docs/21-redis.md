@@ -1,6 +1,6 @@
 # 21. Redis: keşləmə və yaddaşdakı məlumat strukturları
 
-[← 20. Kafka](20-kafka.md) · [Mündəricat](README.md)
+[← 20. Kafka](20-kafka.md) · [Mündəricat](README.md) · Növbəti: [22. Resilience4j →](22-resilience.md)
 
 **Hissə IV: Əlavə mövzular** · **Kod:** [`CacheConfig`](../redis-cache/src/main/java/io/github/gshahrza/cache/CacheConfig.java), [`ProductService`](../redis-cache/src/main/java/io/github/gshahrza/cache/product/ProductService.java), [`ReportService`](../redis-cache/src/main/java/io/github/gshahrza/cache/report/ReportService.java), [`ProductViews`](../redis-cache/src/main/java/io/github/gshahrza/cache/product/ProductViews.java) · **Demo:** http://localhost:8088
 
@@ -547,4 +547,4 @@ Reaktiv (WebFlux) tətbiqdə yalnız Lettuce uyğundur.
 
 ---
 
-[← 20. Kafka](20-kafka.md) · [Mündəricat](README.md)
+[← 20. Kafka](20-kafka.md) · [Mündəricat](README.md) · Növbəti: [22. Resilience4j →](22-resilience.md)

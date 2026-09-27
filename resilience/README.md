@@ -16,6 +16,8 @@ Bu modul ikincisini göstərir.
 | **Bulkhead** | Bir yavaş asılılıq bütün thread-ləri tutmasın | eyni anda maks 5 çağırış |
 | **Fallback** | İstifadəçi səhv səhifəsi yox, köhnə, amma işlək məlumat görsün | son uğurlu məzənnə, `stale: true` |
 
+📖 Kitab üslubunda izah və 30 müsahibə sualı: [22. Resilience4j: xarici servis "xəstələnəndə"](../docs/22-resilience.md).
+
 ## İşə salma qaydası
 
 Heç bir xarici servis lazım deyil: "partnyor API" (`PartnerSimulator`) eyni tətbiqdədir, amma **HTTP ilə** çağırılır.

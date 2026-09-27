@@ -19,7 +19,7 @@ Java 21 və Spring Boot 4 ilə backend-də tez-tez lazım olan mövzuların işl
 
 ## 📖 Bələdçi (qısa kitab)
 
-Streaming mövzuları (ilk üç modul), Spring Batch, Kafka və Redis kitab üslubunda, ayrıca fəsillərdə izah olunub: həyatdan analogiya, problem, bu repodakı kodla addım-addım həll, tələlər və tapşırıqlar (4 hissə, 22 fəsil). Kafka və Redis fəsillərinin sonunda 30-ar müsahibə sualı var. Digər modulların ətraflı izahı öz README-lərindədir.
+Streaming mövzuları (ilk üç modul), Spring Batch, Kafka, Redis və Resilience4j kitab üslubunda, ayrıca fəsillərdə izah olunub: həyatdan analogiya, problem, bu repodakı kodla addım-addım həll, tələlər və tapşırıqlar (4 hissə, 23 fəsil). Kafka, Redis və Resilience4j fəsillərinin sonunda 30-ar müsahibə sualı var. Digər modulların ətraflı izahı öz README-lərindədir.
 **[Oxumağa başla →](docs/README.md)**
 
 ## İşə salma qaydası
