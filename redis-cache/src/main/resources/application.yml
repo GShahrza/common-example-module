@@ -1,0 +1,30 @@
+server:
+  port: 8088
+
+spring:
+  application:
+    name: redis-cache
+  threads:
+    virtual:
+      enabled: true
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: 6379
+  cache:
+    redis:
+      enable-statistics: true     # cache.gets{result=hit|miss} metrics in /actuator/metrics
+
+# Time to live per cache: how stale may the data be?
+cache:
+  ttl:
+    products: 10m
+    productsByCategory: 5m
+    rates: 10s
+    dailyReport: 1m
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, metrics, caches

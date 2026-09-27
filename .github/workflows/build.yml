@@ -29,3 +29,5 @@ jobs:
         run: docker build -f websocket-chat/Dockerfile .
       - name: Docker image build (observability)
         run: docker build -f observability/Dockerfile .
+      - name: Docker image build (redis-cache)
+        run: docker build -f redis-cache/Dockerfile .

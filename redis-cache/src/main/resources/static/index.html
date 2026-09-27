@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="az">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Redis cache</title>
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --text:#1d2330; --muted:#667085; --accent:#dc2626; --border:#e4e7ec; --ok:#16a34a; --bad:#dc2626; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0f1115; --card:#181b22; --text:#e6e8ec; --muted:#98a2b3; --accent:#f87171; --border:#2a2f3a; --ok:#4ade80; --bad:#f87171; } }
+  * { box-sizing: border-box; }
+  body { margin:0; font:15px/1.5 system-ui, sans-serif; background:var(--bg); color:var(--text); }
+  main { max-width: 960px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 24px; }
+  section { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:16px; margin-bottom:16px; }
+  h2 { font-size:16px; margin:0 0 4px; }
+  .desc { color:var(--muted); margin:0 0 12px; font-size:14px; }
+  code { font-size: 13px; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  input, textarea { font:inherit; padding:6px 10px; border:1px solid var(--border); border-radius:6px; background:transparent; color:inherit; }
+  input[type=text] { flex:1; min-width:200px; }
+  textarea { width:100%; min-height:70px; resize:vertical; }
+  button { font:inherit; padding:6px 12px; border:1px solid var(--accent); border-radius:6px; background:var(--accent); color:#fff; cursor:pointer; }
+  button.secondary { background:transparent; color:var(--accent); }
+  button:disabled { opacity:.5; cursor:default; }
+  .out { margin-top:12px; padding:10px 12px; min-height:48px; border:1px dashed var(--border); border-radius:6px; white-space:pre-wrap; overflow-wrap:anywhere; }
+  .stats { margin-top:8px; color:var(--muted); font-size:13px; font-variant-numeric: tabular-nums; }
+  .err { color:var(--bad); }
+  .ok { color:var(--ok); }
+  .msg { margin:6px 0; } .msg b { color:var(--accent); }
+  ul.src { margin:8px 0 0; padding-left:18px; font-size:13px; color:var(--muted); }
+  pre { margin:0; white-space:pre-wrap; font-size:13px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; font-variant-numeric: tabular-nums; }
+  th, td { text-align:left; padding:4px 6px; border-bottom:1px solid var(--border); vertical-align:top; }
+  .tablewrap { max-height:260px; overflow:auto; }
+  .cache { color:var(--ok); font-weight:600; } .db { color:var(--bad); font-weight:600; }
+  input[type=number] { width:90px; }
+  pre { margin:0; white-space:pre-wrap; font-size:12px; }
+  .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap:16px; }
+  @media (max-width: 480px) { .grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Redis ilə keşləmə</h1>
+  <p class="sub">"Baza" hər sorğuda 300 ms gözləyir. Birinci oxuma bazadan (<span class="db">db</span>), sonrakılar Redis-dən (<span class="cache">cache</span>) gəlir. Terminalda <code>docker exec -it redis redis-cli monitor</code> ilə Redis əmrlərini canlı izləyin.</p>
+
+  <section>
+    <h2>1. Məhsul: @Cacheable, @CachePut, @CacheEvict</h2>
+    <div class="row">
+      <label>id <input type="number" id="pid" value="5" min="1"></label>
+      <button id="get">Oxu</button>
+      <label>yeni qiymət <input type="number" id="price" value="99"></label>
+      <button class="secondary" id="put">Qiyməti dəyiş</button>
+      <button class="secondary" id="del">Sil</button>
+      <button class="secondary" id="cat">Kateqoriyanın siyahısı</button>
+    </div>
+    <div class="out"><pre id="productOut"></pre></div>
+  </section>
+
+  <section>
+    <h2>2. TTL: valyuta məzənnələri (10 saniyə)</h2>
+    <p class="desc">Xarici API 500 ms çəkir. 10 saniyə ərzində məzənnə keşdən gəlir, sonra yenidən alınır.</p>
+    <div class="row"><button id="rates">Məzənnələr</button></div>
+    <div class="out"><pre id="ratesOut"></pre></div>
+  </section>
+
+  <section>
+    <h2>3. Cache stampede: @Cacheable(sync = true)</h2>
+    <p class="desc">Keş silinir və hesabat (1 saniyəlik hesablama) N paralel sorğu ilə eyni anda istənilir. Yalnız biri hesablayır, qalanları onun nəticəsini gözləyir.</p>
+    <div class="row"><label>N <input type="number" id="n" value="100"></label><button id="stampede">Başlat</button></div>
+    <div class="out"><pre id="stampedeOut"></pre></div>
+  </section>
+
+  <div class="grid">
+    <section>
+      <h2>Redis-dəki açarlar</h2>
+      <p class="desc">Açara klikləyin: dəyəri JSON kimi görünür.</p>
+      <div class="tablewrap"><table id="keys"></table></div>
+      <div class="out"><pre id="valueOut"></pre></div>
+    </section>
+    <section>
+      <h2>Ən çox baxılanlar (sorted set)</h2>
+      <div class="tablewrap"><table id="top"></table></div>
+      <h2 style="margin-top:12px">Sayğaclar</h2>
+      <div class="tablewrap"><table id="stats"></table></div>
+    </section>
+  </div>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+function table(el, head, rows) {
+  const t = $(el); t.textContent = '';
+  const tr = t.insertRow(); head.forEach(h => { const th = document.createElement('th'); th.textContent = h; tr.append(th); });
+  rows.forEach(r => { const row = t.insertRow(); r.cells.forEach(c => { const td = row.insertCell(); c instanceof Node ? td.append(c) : td.textContent = c ?? ''; });
+    if (r.onclick) { row.style.cursor = 'pointer'; row.onclick = r.onclick; } });
+}
+function show(el, r, body) {
+  const pre = $(el); pre.textContent = '';
+  if (body && body.source) {
+    const s = document.createElement('span'); s.className = body.source; s.textContent = `${body.source} · ${body.millis} ms\n`;
+    pre.append(s, JSON.stringify(body.data, null, 2));
+  } else {
+    pre.textContent = `HTTP ${r.status}\n` + (body ? JSON.stringify(body, null, 2) : '');
+  }
+  refresh();
+}
+async function call(el, url, options) {
+  const r = await fetch(url, options);
+  const text = await r.text();
+  show(el, r, text ? JSON.parse(text) : null);
+  return r;
+}
+const id = () => $('pid').value;
+$('get').onclick = () => call('productOut', `/api/products/${id()}`);
+$('put').onclick = () => call('productOut', `/api/products/${id()}/price`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ price: +$('price').value }) });
+$('del').onclick = () => call('productOut', `/api/products/${id()}`, { method: 'DELETE' });
+$('cat').onclick = async () => {
+  const p = await (await fetch(`/api/products/${id()}`)).json().catch(() => null);
+  call('productOut', `/api/products?category=${p?.data?.category || 'books'}`);
+};
+$('rates').onclick = () => call('ratesOut', '/api/rates');
+$('stampede').onclick = async () => { $('stampedeOut').textContent = 'Gözləyin…'; await call('stampedeOut', `/api/reports/daily/stampede?n=${$('n').value}`, { method: 'POST' }); };
+
+async function refresh() {
+  try {
+    const [keys, top, stats] = await Promise.all(['/api/cache/keys', '/api/products/top', '/api/stats'].map(u => fetch(u).then(r => r.json())));
+    table('keys', ['açar', 'tip', 'TTL (s)'], keys.map(k => ({ cells: [k.key, k.type, k.ttlSeconds < 0 ? '∞' : k.ttlSeconds],
+      onclick: async () => { const r = await fetch(`/api/cache/keys/value?key=${encodeURIComponent(k.key)}`); $('valueOut').textContent = await r.text(); } })));
+    table('top', ['məhsul', 'baxış'], top.map(t => ({ cells: [t.productId, t.views] })));
+    table('stats', ['nə', 'say'], Object.entries(stats).map(([k, v]) => ({ cells: [k, v] })));
+  } catch (e) { /* restarting */ }
+}
+setInterval(refresh, 1000); refresh();
+</script>
+</body>
+</html>

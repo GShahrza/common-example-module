@@ -12,6 +12,7 @@ Java 21 və Spring Boot 4 ilə backend-də tez-tez lazım olan mövzuların işl
 | [`spring-batch`](spring-batch) | Spring Batch 6: chunk, skip/filter, restart, JobInstance, tasklet | 8085 | ✅ |
 | [`websocket-chat`](websocket-chat) | WebSocket + STOMP: otaqlar, şəxsi mesaj, onlayn siyahısı, xam WebSocket ilə müqayisə | 8086 | ✅ |
 | [`observability`](observability) | Micrometer + OpenTelemetry: trace (Tempo), metrika (Prometheus), log (Loki), health | 8087 | ✅ |
+| [`redis-cache`](redis-cache) | Redis: `@Cacheable`/`@CachePut`/`@CacheEvict`, TTL, cache stampede (`sync`), sorted set | 8088 | ✅ |
 
 ## 📖 Bələdçi (qısa kitab)
 
@@ -90,10 +91,28 @@ docker run -d --name lgtm -p 3000:3000 -p 4317:4317 -p 4318:4318 grafana/otel-lg
 
 Ətraflı: [observability/README.md](observability/README.md).
 
+### redis-cache (Redis lazımdır)
+
+Ardıcıllıqla:
+
+```bash
+# 1. Redis-i işə salın
+docker run -d --name redis -p 6379:6379 redis:8-alpine
+# 2. Tətbiqi işə salın
+./gradlew :redis-cache:bootRun        # http://localhost:8088
+```
+
+Ətraflı: [redis-cache/README.md](redis-cache/README.md).
+
 ### Testlər
 
 ```bash
-./gradlew build                       # bütün modulların testləri; xarici servis lazım deyil
+./gradlew build                       # bütün modulların testləri
+```
+
+Kafka, Ollama və Grafana testlərdə lazım deyil (embedded Kafka, saxta modellər). `redis-cache` testləri isə real Redis-i Testcontainers ilə qaldırır, ona görə Docker işləməlidir.
+
+```bash
 ```
 
 ## Struktur
@@ -118,7 +137,8 @@ docker run -d --name lgtm -p 3000:3000 -p 4317:4317 -p 4318:4318 grafana/otel-lg
 ├── kafka-events/           # Kafka: outbox, idempotency, retry, DLT, saga
 ├── spring-batch/           # Spring Batch: CSV import, skip, restart
 ├── websocket-chat/         # WebSocket + STOMP chat
-└── observability/          # Micrometer, OpenTelemetry, Grafana
+├── observability/          # Micrometer, OpenTelemetry, Grafana
+└── redis-cache/            # Redis cache, TTL, stampede
 ```
 
 ## Hansını nə vaxt seçməli?
