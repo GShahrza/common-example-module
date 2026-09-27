@@ -9,6 +9,8 @@ Spring AI 2.0 ilə generativ AI-ın backend tərəfində ən çox istifadə olun
 | 3 | Tool (function) calling | `POST /api/tools/ask` | Model sizin Java metodlarınızı çağırır: "7 nömrəli sifariş haradadır?" |
 | 4 | RAG | `GET /api/rag/stream` (SSE) | Öz sənədlərinizdən cavab: daxili wiki, müqavilələr, FAQ |
 
+📖 Kitab üslubunda izah və 30 müsahibə sualı: [25. Spring AI: generativ AI-ı backend-ə qoşmaq](../docs/25-spring-ai.md).
+
 ## İşə salma qaydası
 
 Aşağıdakı addımları **ardıcıllıqla** icra edin.

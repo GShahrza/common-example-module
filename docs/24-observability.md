@@ -1,6 +1,6 @@
 # 24. Observability: trace, metrika və log
 
-[← 23. Spring Security və JWT](23-security-jwt.md) · [Mündəricat](README.md)
+[← 23. Spring Security və JWT](23-security-jwt.md) · [Mündəricat](README.md) · Növbəti: [25. Spring AI →](25-spring-ai.md)
 
 **Hissə IV: Əlavə mövzular** · **Kod:** [`CheckoutService`](../observability/src/main/java/io/github/gshahrza/observability/checkout/CheckoutService.java), [`InventoryService`](../observability/src/main/java/io/github/gshahrza/observability/inventory/InventoryService.java), [`PaymentController`](../observability/src/main/java/io/github/gshahrza/observability/payment/PaymentController.java), [`PaymentGatewayHealth`](../observability/src/main/java/io/github/gshahrza/observability/payment/PaymentGatewayHealth.java), [`application.yml`](../observability/src/main/resources/application.yml), [`logback-spring.xml`](../observability/src/main/resources/logback-spring.xml) · **Demo:** http://localhost:8087, Grafana: http://localhost:3000
 
@@ -563,4 +563,4 @@ SLO-lar istifadəçinin hiss etdiyi davranışa əsaslanmalıdır, texniki metri
 
 ---
 
-[← 23. Spring Security və JWT](23-security-jwt.md) · [Mündəricat](README.md)
+[← 23. Spring Security və JWT](23-security-jwt.md) · [Mündəricat](README.md) · Növbəti: [25. Spring AI →](25-spring-ai.md)

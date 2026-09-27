@@ -44,7 +44,8 @@ docker compose up --build
 22. [Resilience4j: xarici servis "xəstələnəndə"](22-resilience.md) ([`resilience`](../resilience), http://localhost:8089) + 30 müsahibə sualı
 23. [Spring Security və JWT: API-ni stateless qorumaq](23-security-jwt.md) ([`security-jwt`](../security-jwt), http://localhost:8090) + 30 müsahibə sualı
 24. [Observability: trace, metrika və log](24-observability.md) ([`observability`](../observability), http://localhost:8087) + 30 müsahibə sualı
+25. [Spring AI: generativ AI-ı backend-ə qoşmaq](25-spring-ai.md) ([`spring-ai`](../spring-ai), http://localhost:8083) + 30 müsahibə sualı
 
 ---
 
-Qısa arayış üçün modulların README-lərinə baxın: [mvc-streaming](../mvc-streaming/README.md), [webflux-streaming](../webflux-streaming/README.md), [grpc-streaming](../grpc-streaming/README.md), [spring-batch](../spring-batch/README.md), [kafka-events](../kafka-events/README.md), [redis-cache](../redis-cache/README.md), [resilience](../resilience/README.md), [security-jwt](../security-jwt/README.md), [observability](../observability/README.md).
+Qısa arayış üçün modulların README-lərinə baxın: [mvc-streaming](../mvc-streaming/README.md), [webflux-streaming](../webflux-streaming/README.md), [grpc-streaming](../grpc-streaming/README.md), [spring-batch](../spring-batch/README.md), [kafka-events](../kafka-events/README.md), [redis-cache](../redis-cache/README.md), [resilience](../resilience/README.md), [security-jwt](../security-jwt/README.md), [observability](../observability/README.md), [spring-ai](../spring-ai/README.md).
