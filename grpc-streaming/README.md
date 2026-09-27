@@ -234,11 +234,18 @@ grpcurl -plaintext localhost:9090 grpc.health.v1.Health/Check
 
 ## Üç modulun müqayisəsi: hansını nə vaxt?
 
-| Ssenari | Seçim |
-|---|---|
-| Brauzerə canlı yeniləmə, chat cavabı, progress | SSE: [MVC](../mvc-streaming) və ya [WebFlux](../webflux-streaming) |
-| Brauzerə böyük siyahı və ya fayl | NDJSON / `StreamingResponseBody` |
-| Bloklayan kitabxanalar (JPA, JDBC), adi CRUD | Spring MVC + virtual thread-lər |
-| Çoxlu eyni vaxtlı əlaqə, servisləri birləşdirmək, backpressure | WebFlux |
-| Servislər arası sürətli, tipli, çox dilli əlaqə | gRPC |
-| Hər iki istiqamətdə davamlı axın (servislər arası) | gRPC bidirectional streaming |
+Seçim, API-ni **kimin çağırdığından** asılıdır:
+
+| Kim çağırır / nə lazımdır | Seçim | Nümunə |
+|---|---|---|
+| Mobil tətbiq (Android/iOS) və ya SPA: siyahı, detal, sifariş yaratmaq (JPA/JDBC ilə adi CRUD) | REST + Spring MVC + virtual thread-lər | `GET /api/v1/orders?page=0&size=20`, `POST /api/v1/orders` + `Idempotency-Key` |
+| Mobil tətbiq və ya brauzer, tətbiq açıq ikən: canlı status, progress, chat cavabı | SSE: [MVC](../mvc-streaming) və ya [WebFlux](../webflux-streaming) | `/api/jobs/{id}/events` |
+| Mobil tətbiq bağlı və ya arxa fondadır | Push bildiriş (FCM/APNs) | — |
+| Brauzer və ya mobil tətbiq: böyük siyahı və ya fayl | NDJSON / `StreamingResponseBody` | `/api/orders/stream`, `/api/orders/export.csv` |
+| Chat, iki tərəfli canlı əlaqə | WebSocket + STOMP ([websocket-chat](../websocket-chat)) | `/ws` |
+| Öz mobil tətbiqiniz, zəif şəbəkə, çox məlumat | gRPC (mobil platformalarda gateway lazım deyil) | `OrderService/ListOrders` |
+| Öz backend servisləriniz: sürətli, tipli, çox dilli | gRPC | `OrderService/GetOrder` |
+| Servislər arası davamlı iki tərəfli axın | gRPC bidirectional streaming | `OrderService/Chat` |
+| Çoxlu servisi paralel çağıran API gateway / BFF | WebFlux (`Mono.zip`) və ya MVC + virtual thread | [webflux-streaming](../webflux-streaming) |
+
+Android (Kotlin, Retrofit, OkHttp SSE, grpc-kotlin) və iOS (Swift, URLSession) üçün kod nümunələri: [bələdçinin sonsözü, "Real klientlər"](../docs/18-secim.md#real-klientlər-kim-çağırır).
