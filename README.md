@@ -8,6 +8,11 @@ Serverdən frontend-ə cavabı **hissə-hissə** (stream) göndərməyin Java 21
 | [`webflux-streaming`](webflux-streaming) | WebFlux: adi request-lərdən fərqi (thread modeli, `Mono.zip`), reaktiv streaming, backpressure | 8081 | ✅ |
 | [`grpc-streaming`](grpc-streaming) | gRPC: unary, server, client və bidirectional streaming; brauzer üçün HTTP gateway | 8082 (demo), 9090 (gRPC) | ✅ |
 
+## 📖 Bələdçi (qısa kitab)
+
+Hər mövzu kitab üslubunda, ayrıca fəsildə izah olunub: həyatdan analogiya, problem, bu repodakı kodla addım-addım həll, tələlər və tapşırıqlar. 3 hissə, 19 fəsil.
+**[Oxumağa başla →](docs/README.md)**
+
 ## Bir əmrlə işə salmaq
 
 Yalnız Docker lazımdır (Java və ya Gradle quraşdırmağa ehtiyac yoxdur):

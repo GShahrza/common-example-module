@@ -2,6 +2,8 @@
 
 [← Əsas səhifə](../README.md)
 
+> Bu mövzunun ətraflı, kitab üslubunda izahı: [Hissə III: gRPC](../docs/README.md#iii-hissə-grpc-grpc-streaming-httplocalhost8082-grpc-localhost9090)
+
 Demo səhifə: **http://localhost:8082** · gRPC server: **localhost:9090**
 
 ## gRPC nədir?

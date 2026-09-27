@@ -2,6 +2,8 @@
 
 [← Əsas səhifə](../README.md)
 
+> Bu mövzunun ətraflı, kitab üslubunda izahı: [Hissə I: Spring MVC](../docs/README.md#i-hissə-spring-mvc-mvc-streaming-httplocalhost8080)
+
 Bu modul adi (servlet əsaslı) Spring MVC tətbiqində cavabı hissə-hissə göndərməyin üç əsas üsulunu göstərir. Demo səhifə: **http://localhost:8080**.
 
 ## Adi request və streaming request arasında fərq

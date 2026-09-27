@@ -2,6 +2,8 @@
 
 [← Əsas səhifə](../README.md) · Müqayisə üçün: [Spring MVC modulu](../mvc-streaming/README.md)
 
+> Bu mövzunun ətraflı, kitab üslubunda izahı: [Hissə II: WebFlux](../docs/README.md#ii-hissə-webflux-webflux-streaming-httplocalhost8081)
+
 Demo səhifə: **http://localhost:8081**
 
 ## İki model
