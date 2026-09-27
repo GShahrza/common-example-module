@@ -10,6 +10,7 @@ Java 21 və Spring Boot 4 ilə backend-də tez-tez lazım olan mövzuların işl
 | [`spring-ai`](spring-ai) | Spring AI + Ollama: streaming chat, structured output, tool calling, RAG | 8083 | ✅ |
 | [`kafka-events`](kafka-events) | Event-driven: transactional outbox, idempotent consumer, retry topic, DLT, saga | 8084 | ✅ |
 | [`spring-batch`](spring-batch) | Spring Batch 6: chunk, skip/filter, restart, JobInstance, tasklet | 8085 | ✅ |
+| [`websocket-chat`](websocket-chat) | WebSocket + STOMP: otaqlar, şəxsi mesaj, onlayn siyahısı, xam WebSocket ilə müqayisə | 8086 | ✅ |
 
 ## 📖 Bələdçi (qısa kitab)
 
@@ -67,6 +68,14 @@ docker run -d --name kafka -p 9092:9092 apache/kafka:4.1.0
 
 Ətraflı: [spring-batch/README.md](spring-batch/README.md).
 
+### websocket-chat (əlavə heç nə lazım deyil)
+
+```bash
+./gradlew :websocket-chat:bootRun     # http://localhost:8086 (iki tab-da açın)
+```
+
+Ətraflı: [websocket-chat/README.md](websocket-chat/README.md).
+
 ### Testlər
 
 ```bash
@@ -93,7 +102,8 @@ docker run -d --name kafka -p 9092:9092 apache/kafka:4.1.0
 │   └── src/main/proto/     # API müqaviləsi (.proto)
 ├── spring-ai/              # Spring AI + Ollama
 ├── kafka-events/           # Kafka: outbox, idempotency, retry, DLT, saga
-└── spring-batch/           # Spring Batch: CSV import, skip, restart
+├── spring-batch/           # Spring Batch: CSV import, skip, restart
+└── websocket-chat/         # WebSocket + STOMP chat
 ```
 
 ## Hansını nə vaxt seçməli?

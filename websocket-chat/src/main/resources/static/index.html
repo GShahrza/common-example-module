@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="az">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WebSocket chat</title>
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --text:#1d2330; --muted:#667085; --accent:#db2777; --border:#e4e7ec; --ok:#16a34a; --bad:#dc2626; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0f1115; --card:#181b22; --text:#e6e8ec; --muted:#98a2b3; --accent:#f472b6; --border:#2a2f3a; --ok:#4ade80; --bad:#f87171; } }
+  * { box-sizing: border-box; }
+  body { margin:0; font:15px/1.5 system-ui, sans-serif; background:var(--bg); color:var(--text); }
+  main { max-width: 960px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 24px; }
+  section { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:16px; margin-bottom:16px; }
+  h2 { font-size:16px; margin:0 0 4px; }
+  .desc { color:var(--muted); margin:0 0 12px; font-size:14px; }
+  code { font-size: 13px; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  input, textarea { font:inherit; padding:6px 10px; border:1px solid var(--border); border-radius:6px; background:transparent; color:inherit; }
+  input[type=text] { flex:1; min-width:200px; }
+  textarea { width:100%; min-height:70px; resize:vertical; }
+  button { font:inherit; padding:6px 12px; border:1px solid var(--accent); border-radius:6px; background:var(--accent); color:#fff; cursor:pointer; }
+  button.secondary { background:transparent; color:var(--accent); }
+  button:disabled { opacity:.5; cursor:default; }
+  .out { margin-top:12px; padding:10px 12px; min-height:48px; border:1px dashed var(--border); border-radius:6px; white-space:pre-wrap; overflow-wrap:anywhere; }
+  .stats { margin-top:8px; color:var(--muted); font-size:13px; font-variant-numeric: tabular-nums; }
+  .err { color:var(--bad); }
+  .ok { color:var(--ok); }
+  .msg { margin:6px 0; } .msg b { color:var(--accent); }
+  ul.src { margin:8px 0 0; padding-left:18px; font-size:13px; color:var(--muted); }
+  pre { margin:0; white-space:pre-wrap; font-size:13px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; font-variant-numeric: tabular-nums; }
+  th, td { text-align:left; padding:4px 6px; border-bottom:1px solid var(--border); vertical-align:top; }
+  .tablewrap { max-height:260px; overflow:auto; }
+  .chat { display:grid; grid-template-columns: 1fr 180px; gap:12px; }
+  @media (max-width: 600px) { .chat { grid-template-columns: 1fr; } }
+  #messages { height:320px; overflow:auto; border:1px solid var(--border); border-radius:6px; padding:8px; }
+  .m { margin:4px 0; } .m .who { font-weight:600; color:var(--accent); } .m .t { color:var(--muted); font-size:12px; }
+  .m.private { background: color-mix(in srgb, var(--accent) 10%, transparent); border-radius:4px; padding:2px 6px; }
+  .m.err { color:var(--bad); }
+  ul.users { list-style:none; margin:0; padding:0; } ul.users li { padding:3px 0; cursor:pointer; } ul.users li:hover { color:var(--accent); }
+  select { font:inherit; padding:6px; border:1px solid var(--border); border-radius:6px; background:transparent; color:inherit; }
+  .frames { font:12px/1.4 ui-monospace, monospace; max-height:160px; overflow:auto; white-space:pre-wrap; color:var(--muted); }
+  .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap:16px; }
+  @media (max-width: 480px) { .grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>WebSocket + STOMP: real-time chat</h1>
+  <p class="sub">Bir WebSocket bağlantısı üzərində otaqlar, şəxsi mesajlar, kim onlayndır və "yazır..." göstəricisi. Bu səhifəni iki tab-da fərqli adlarla açın.</p>
+
+  <section>
+    <div class="row">
+      <input type="text" id="name" placeholder="Adınız" style="flex:0 1 180px">
+      <button id="connect">Qoşul</button>
+      <button class="secondary" id="disconnect" disabled>Ayrıl</button>
+      <select id="room"><option>general</option><option>java</option><option>spring</option></select>
+      <span class="stats" id="state">qoşulmayıb</span>
+    </div>
+  </section>
+
+  <section class="chat">
+    <div>
+      <div id="messages"></div>
+      <div class="stats" id="typing">&nbsp;</div>
+      <div class="row" style="margin-top:6px">
+        <input type="text" id="text" placeholder="Mesaj (şəxsi üçün sağdan istifadəçini seçin)" disabled>
+        <button id="send" disabled>Göndər</button>
+      </div>
+      <div class="stats" id="target"></div>
+    </div>
+    <div>
+      <h2>Onlayn</h2>
+      <ul class="users" id="users"></ul>
+    </div>
+  </section>
+
+  <section>
+    <h2>STOMP frame-ləri</h2>
+    <p class="desc">STOMP sadə mətn protokoludur: komanda, header-lər, boş sətir, body və <code>\0</code>. Aşağıda bu səhifənin göndərdiyi (→) və aldığı (←) frame-lər görünür.</p>
+    <div class="frames" id="frames"></div>
+  </section>
+
+  <section>
+    <h2>Müqayisə: STOMP-suz, xam WebSocket</h2>
+    <p class="desc"><code>/ws/echo</code> yalnız mətn frame-ləri qəbul edir və qaytarır. Otaq, istifadəçi, marşrutlaşdırma yoxdur; bunları özünüz icad etməli olardınız.</p>
+    <div class="row"><input type="text" id="raw" value="salam"><button id="rawSend">Göndər</button></div>
+    <div class="out" id="rawOut"></div>
+  </section>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+let ws, subs = {}, subSeq = 0, target = null, typingTimer = null, typingSent = false;
+const typers = new Map();
+
+// ---- a minimal STOMP 1.2 client: frames are "COMMAND\nheader:value\n\nbody\0" ----
+function frame(command, headers = {}, body = '') {
+  const text = command + '\n' + Object.entries(headers).map(([k, v]) => k + ':' + v).join('\n') + '\n\n' + body + '\0';
+  log('→ ' + text.replace('\0', '^@'));
+  ws.send(text);
+}
+function parse(data) {
+  return data.split('\0').filter(f => f.trim()).map(f => {
+    const [head, ...rest] = f.replace(/^\n+/, '').split('\n\n');
+    const [command, ...lines] = head.split('\n');
+    const headers = Object.fromEntries(lines.map(l => [l.slice(0, l.indexOf(':')), l.slice(l.indexOf(':') + 1)]));
+    return { command, headers, body: rest.join('\n\n') };
+  });
+}
+function subscribe(destination, handler) {
+  const id = 'sub-' + (++subSeq);
+  subs[id] = handler;
+  frame('SUBSCRIBE', { id, destination });
+  return id;
+}
+function unsubscribe(id) { if (id) { delete subs[id]; frame('UNSUBSCRIBE', { id }); } }
+function send(destination, payload) { frame('SEND', { destination, 'content-type': 'application/json' }, JSON.stringify(payload)); }
+function log(text) {
+  const f = $('frames'); f.textContent = (text.length > 300 ? text.slice(0, 300) + '…' : text) + '\n' + f.textContent.slice(0, 5000);
+}
+
+// ---- chat ----
+let roomSubs = [];
+$('connect').onclick = () => {
+  const name = $('name').value.trim();
+  if (!name) { $('name').focus(); return; }
+  ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws?name=${encodeURIComponent(name)}`);
+  ws.onopen = () => frame('CONNECT', { 'accept-version': '1.2', host: location.hostname, 'heart-beat': '0,0' });
+  ws.onmessage = e => parse(e.data).forEach(f => {
+    log('← ' + f.command + ' ' + (f.headers.destination || '') + ' ' + f.body);
+    if (f.command === 'CONNECTED') onConnected(name);
+    else if (f.command === 'MESSAGE') subs[f.headers.subscription]?.(JSON.parse(f.body));
+    else if (f.command === 'ERROR') add({ from: 'server', text: f.headers.message || f.body }, 'err');
+  });
+  ws.onclose = () => { $('state').textContent = 'bağlantı bağlandı'; toggle(false); };
+};
+$('disconnect').onclick = () => { frame('DISCONNECT'); ws.close(); };
+
+function onConnected(name) {
+  $('state').textContent = 'qoşuldu: ' + name; toggle(true);
+  subscribe('/topic/online', users);
+  subscribe('/app/online', users);                           // request-reply: current list
+  subscribe('/user/queue/private', m => add({ from: `${m.from} → ${m.to}`, text: m.text, at: m.at }, 'private'));
+  subscribe('/user/queue/errors', e => add({ from: 'xəta', text: e.message }, 'err'));
+  joinRoom();
+}
+function joinRoom() {
+  roomSubs.forEach(unsubscribe); typers.clear(); showTyping();
+  const room = $('room').value;
+  $('messages').textContent = '';
+  roomSubs = [
+    subscribe(`/app/rooms/${room}/history`, list => list.forEach(m => add(m))),   // one reply, then done
+    subscribe(`/topic/rooms/${room}`, m => add(m)),
+    subscribe(`/topic/rooms/${room}/typing`, t => {
+      if (t.user === $('name').value.trim()) return;
+      t.typing ? typers.set(t.user, Date.now()) : typers.delete(t.user); showTyping();
+    }),
+  ];
+}
+$('room').onchange = () => ws?.readyState === 1 && joinRoom();
+
+function users(list) {
+  const ul = $('users'); ul.textContent = '';
+  list.forEach(u => { const li = document.createElement('li'); li.textContent = '● ' + u;
+    li.onclick = () => { target = target === u ? null : u; $('target').textContent = target ? `Şəxsi mesaj: ${target} (ləğv üçün yenidən klikləyin)` : ''; };
+    ul.append(li); });
+}
+function add(m, cls = '') {
+  const div = document.createElement('div'); div.className = 'm ' + cls;
+  const who = document.createElement('span'); who.className = 'who'; who.textContent = m.from + ': ';
+  const t = document.createElement('span'); t.className = 't'; t.textContent = m.at ? ' ' + new Date(m.at).toLocaleTimeString() : '';
+  div.append(who, m.text, t);
+  $('messages').append(div); $('messages').scrollTop = 1e9;
+}
+function showTyping() {
+  const names = [...typers.keys()];
+  $('typing').innerHTML = names.length ? names.join(', ') + ' yazır…' : '&nbsp;';
+}
+function toggle(on) {
+  $('connect').disabled = on; $('disconnect').disabled = !on; $('text').disabled = !on; $('send').disabled = !on;
+  if (!on) { $('users').textContent = ''; }
+}
+function sendMessage() {
+  const text = $('text').value; if (!text.trim()) return;
+  target ? send(`/app/private/${encodeURIComponent(target)}`, { text }) : send(`/app/rooms/${$('room').value}`, { text });
+  $('text').value = ''; typing(false);
+}
+function typing(on) {
+  if (on === typingSent) return;
+  typingSent = on; send(`/app/rooms/${$('room').value}/typing`, on);
+}
+$('send').onclick = sendMessage;
+$('text').onkeydown = e => { if (e.key === 'Enter') sendMessage(); };
+$('text').oninput = () => { typing(true); clearTimeout(typingTimer); typingTimer = setTimeout(() => typing(false), 1500); };
+
+// ---- raw WebSocket ----
+let raw;
+$('rawSend').onclick = () => {
+  const go = () => raw.send($('raw').value);
+  if (raw?.readyState === 1) return go();
+  raw = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws/echo`);
+  raw.onmessage = e => { $('rawOut').textContent += e.data + '\n'; };
+  raw.onopen = go;
+};
+</script>
+</body>
+</html>

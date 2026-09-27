@@ -25,3 +25,5 @@ jobs:
         run: docker build -f kafka-events/Dockerfile .
       - name: Docker image build (spring-batch)
         run: docker build -f spring-batch/Dockerfile .
+      - name: Docker image build (websocket-chat)
+        run: docker build -f websocket-chat/Dockerfile .
