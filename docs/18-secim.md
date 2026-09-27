@@ -1,6 +1,6 @@
 # Sonsöz: Hansını nə vaxt seçməli?
 
-[← 17. Brauzer, gateway və gRPC alətləri](17-brauzer-ve-gateway.md) · [Mündəricat](README.md)
+[← 17. Brauzer, gateway və gRPC alətləri](17-brauzer-ve-gateway.md) · [Mündəricat](README.md) · Əlavə: [19. Spring Batch →](19-spring-batch.md)
 
 ---
 
@@ -248,4 +248,4 @@ Uğurlar!
 
 ---
 
-[← 17. Brauzer, gateway və gRPC alətləri](17-brauzer-ve-gateway.md) · [Mündəricat](README.md)
+[← 17. Brauzer, gateway və gRPC alətləri](17-brauzer-ve-gateway.md) · [Mündəricat](README.md) · Əlavə: [19. Spring Batch →](19-spring-batch.md)

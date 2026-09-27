@@ -1,6 +1,6 @@
 # Streaming bələdçisi
 
-Serverdən cavabı hissə-hissə göndərmək haqqında qısa kitab: Spring MVC, WebFlux və gRPC, Java 21 və Spring Boot 4 ilə. Hər fəsil sadə analogiya ilə başlayır, problemi göstərir, həlli bu repodakı işlək kodla addım-addım izah edir və tapşırıqla bitir.
+Serverdən cavabı hissə-hissə göndərmək haqqında qısa kitab: Spring MVC, WebFlux və gRPC, Java 21 və Spring Boot 4 ilə. IV hissə isə eyni üslubda digər modulların mövzularını izah edir. Hər fəsil sadə analogiya ilə başlayır, problemi göstərir, həlli bu repodakı işlək kodla addım-addım izah edir və tapşırıqla bitir.
 
 Başlamazdan əvvəl bütün nümunələri işə salın:
 
@@ -37,6 +37,9 @@ docker compose up --build
 
 **[Sonsöz: Hansını nə vaxt seçməli?](18-secim.md)**
 
+### IV hissə: Əlavə mövzular
+19. [Spring Batch: böyük faylı etibarlı emal etmək](19-spring-batch.md) ([`spring-batch`](../spring-batch), http://localhost:8085)
+
 ---
 
-Qısa arayış üçün modulların README-lərinə baxın: [mvc-streaming](../mvc-streaming/README.md), [webflux-streaming](../webflux-streaming/README.md), [grpc-streaming](../grpc-streaming/README.md).
+Qısa arayış üçün modulların README-lərinə baxın: [mvc-streaming](../mvc-streaming/README.md), [webflux-streaming](../webflux-streaming/README.md), [grpc-streaming](../grpc-streaming/README.md), [spring-batch](../spring-batch/README.md).

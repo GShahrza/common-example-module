@@ -17,6 +17,8 @@ Spring Batch 6 ilə klassik ssenari: bankın gündəlik çıxarışını (yüz m
 | Tasklet step və idempotent yekun | `ImportJobConfig.summaryStep` |
 | `@StepScope` və late binding | `reader(...)`, `processor(...)` |
 
+📖 Kitab üslubunda izah (analogiya, addım-addım həll, tapşırıqlar): [19. Spring Batch: böyük faylı etibarlı emal etmək](../docs/19-spring-batch.md).
+
 ## İşə salma qaydası
 
 Heç bir xarici servis lazım deyil: baza H2-dir (yaddaşda) və tətbiqlə birlikdə qalxır.
