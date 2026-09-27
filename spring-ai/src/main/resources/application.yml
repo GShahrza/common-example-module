@@ -1,0 +1,25 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: spring-ai
+  threads:
+    virtual:
+      enabled: true
+  ai:
+    ollama:
+      base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
+      chat:
+        # Small model (~2 GB) that supports tool calling; any Ollama chat model works
+        model: ${CHAT_MODEL:qwen2.5:3b}
+        temperature: 0.3
+      embedding:
+        model: ${EMBEDDING_MODEL:nomic-embed-text}
+      init:
+        # Download the models on first start if Ollama does not have them yet
+        pull-model-strategy: when_missing
+        timeout: 20m
+
+rag:
+  docs: classpath*:rag-docs/*.md

@@ -1,0 +1,6 @@
+spring:
+  ai:
+    # Tests do not need Ollama: fake models are provided as beans
+    model:
+      chat: none
+      embedding: none

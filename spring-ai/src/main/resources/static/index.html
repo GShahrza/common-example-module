@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="az">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spring AI</title>
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --text:#1d2330; --muted:#667085; --accent:#0d9488; --border:#e4e7ec; --ok:#16a34a; --bad:#dc2626; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0f1115; --card:#181b22; --text:#e6e8ec; --muted:#98a2b3; --accent:#2dd4bf; --border:#2a2f3a; --ok:#4ade80; --bad:#f87171; } }
+  * { box-sizing: border-box; }
+  body { margin:0; font:15px/1.5 system-ui, sans-serif; background:var(--bg); color:var(--text); }
+  main { max-width: 960px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 24px; }
+  section { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:16px; margin-bottom:16px; }
+  h2 { font-size:16px; margin:0 0 4px; }
+  .desc { color:var(--muted); margin:0 0 12px; font-size:14px; }
+  code { font-size: 13px; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  input, textarea { font:inherit; padding:6px 10px; border:1px solid var(--border); border-radius:6px; background:transparent; color:inherit; }
+  input[type=text] { flex:1; min-width:200px; }
+  textarea { width:100%; min-height:70px; resize:vertical; }
+  button { font:inherit; padding:6px 12px; border:1px solid var(--accent); border-radius:6px; background:var(--accent); color:#fff; cursor:pointer; }
+  button.secondary { background:transparent; color:var(--accent); }
+  button:disabled { opacity:.5; cursor:default; }
+  .out { margin-top:12px; padding:10px 12px; min-height:48px; border:1px dashed var(--border); border-radius:6px; white-space:pre-wrap; overflow-wrap:anywhere; }
+  .stats { margin-top:8px; color:var(--muted); font-size:13px; font-variant-numeric: tabular-nums; }
+  .err { color:var(--bad); }
+  .ok { color:var(--ok); }
+  .msg { margin:6px 0; } .msg b { color:var(--accent); }
+  ul.src { margin:8px 0 0; padding-left:18px; font-size:13px; color:var(--muted); }
+  pre { margin:0; white-space:pre-wrap; font-size:13px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Spring AI + Ollama</h1>
+  <p class="sub">Lokal LLM ilə 4 nümunə: streaming chat, structured output, tool calling və RAG. Cavab gəlmirsə, Ollama-nın işlədiyini yoxlayın (README).</p>
+
+  <section>
+    <h2>1. Streaming chat + yaddaş</h2>
+    <p class="desc"><code>GET /api/chat/stream</code>. Cavab token-token SSE ilə gəlir. Eyni <code>conversationId</code> ilə model əvvəlki mesajları xatırlayır (məs. "Adım Aynurdur", sonra "Adım nə idi?").</p>
+    <div class="row">
+      <input type="text" id="chatMsg" value="Salam! Adım Aynurdur. SSE nədir, 2 cümlə ilə izah et.">
+      <button id="chatBtn">Göndər</button>
+      <button class="secondary" id="chatReset">Yaddaşı sil</button>
+    </div>
+    <div class="out" id="chatOut"></div>
+    <div class="stats" id="chatStats"></div>
+  </section>
+
+  <section>
+    <h2>2. Structured output</h2>
+    <p class="desc"><code>POST /api/extract</code>. Sərbəst mətndən Java record-u (<code>OrderDraft</code>) çıxarılır.</p>
+    <textarea id="exText">Salam, mən Rəşad. 2 ədəd Keyboard (hərəsi 45 AZN) və 1 Monitor (320 AZN) istəyirəm, Gəncəyə çatdırın.</textarea>
+    <div class="row"><button id="exBtn">Çıxar</button></div>
+    <div class="out"><pre id="exOut"></pre></div>
+  </section>
+
+  <section>
+    <h2>3. Tool calling</h2>
+    <p class="desc"><code>POST /api/tools/ask</code>. Model lazım olanda Java metodlarını (<code>getOrder</code>, <code>cancelOrder</code>) özü çağırır. Aşağıda hansı tool-un hansı arqumentlə çağırıldığı görünür.</p>
+    <div class="row">
+      <input type="text" id="toolQ" value="7 və 4 nömrəli sifarişləri ləğv et, nəticəni de.">
+      <button id="toolBtn">Soruş</button>
+    </div>
+    <div class="out" id="toolOut"></div>
+  </section>
+
+  <section>
+    <h2>4. RAG: bu repodakı kitabdan cavab</h2>
+    <p class="desc"><code>GET /api/rag/stream</code>. <code>docs/</code> fəsilləri start-da vektor bazasına yazılır. Sual gələndə ən uyğun 4 parça tapılır və model yalnız onlara əsasən cavab verir.</p>
+    <div class="stats" id="ragStatus">İndeks vəziyyəti yoxlanılır…</div>
+    <div class="row" style="margin-top:8px">
+      <input type="text" id="ragQ" value="SSE-də Last-Event-ID nə üçündür?">
+      <button id="ragBtn">Soruş</button>
+    </div>
+    <ul class="src" id="ragSrc"></ul>
+    <div class="out" id="ragOut"></div>
+  </section>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const conversationId = 'demo-' + Math.random().toString(36).slice(2, 8);
+
+function stream(url, out, stats, btn, onSources) {
+  btn.disabled = true;
+  const started = performance.now();
+  let first = null, tokens = 0;
+  const es = new EventSource(url);
+  const finish = () => { es.close(); btn.disabled = false; };
+  es.addEventListener('sources', e => onSources && onSources(JSON.parse(e.data)));
+  es.addEventListener('token', e => {
+    if (first === null) first = performance.now() - started;
+    tokens++;
+    out.append(JSON.parse(e.data).text);
+    if (stats) stats.textContent = `ilk token: ${Math.round(first)} ms · token sayı: ${tokens}`;
+  });
+  es.addEventListener('done', () => {
+    if (stats) stats.textContent += ` · cəmi: ${Math.round(performance.now() - started)} ms`;
+    finish();
+  });
+  es.addEventListener('error', e => {
+    const msg = e.data ? JSON.parse(e.data).message : 'Bağlantı kəsildi (Ollama işləyir?)';
+    const span = document.createElement('div'); span.className = 'err'; span.textContent = msg;
+    out.append(span);
+    finish();
+  });
+}
+
+async function postJson(url, body) {
+  const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const data = await r.json();
+  if (!r.ok) throw new Error(data.error || data.detail || r.status);
+  return data;
+}
+
+$('chatBtn').onclick = () => {
+  const msg = $('chatMsg').value;
+  const line = document.createElement('div'); line.className = 'msg';
+  line.innerHTML = '<b>Siz:</b> '; line.append(msg);
+  const answer = document.createElement('div'); answer.className = 'msg';
+  answer.innerHTML = '<b>AI:</b> ';
+  $('chatOut').append(line, answer);
+  stream(`/api/chat/stream?conversationId=${conversationId}&message=${encodeURIComponent(msg)}`,
+         answer, $('chatStats'), $('chatBtn'));
+};
+$('chatReset').onclick = async () => {
+  await fetch(`/api/chat/${conversationId}`, { method: 'DELETE' });
+  $('chatOut').textContent = ''; $('chatStats').textContent = 'Yaddaş silindi.';
+};
+
+$('exBtn').onclick = async () => {
+  $('exBtn').disabled = true; $('exOut').textContent = 'Gözləyin…';
+  try { $('exOut').textContent = JSON.stringify(await postJson('/api/extract', { text: $('exText').value }), null, 2); }
+  catch (e) { $('exOut').textContent = 'Xəta: ' + e.message; }
+  $('exBtn').disabled = false;
+};
+
+$('toolBtn').onclick = async () => {
+  $('toolBtn').disabled = true; $('toolOut').textContent = 'Gözləyin…';
+  try {
+    const a = await postJson('/api/tools/ask', { question: $('toolQ').value });
+    $('toolOut').textContent = a.answer + '\n\nTool çağırışları:\n' +
+      (a.toolCalls.length ? a.toolCalls.map(c => `• ${c.tool}(${c.arguments}) → ${c.result}`).join('\n') : '(yoxdur)');
+  } catch (e) { $('toolOut').textContent = 'Xəta: ' + e.message; }
+  $('toolBtn').disabled = false;
+};
+
+$('ragBtn').onclick = () => {
+  $('ragOut').textContent = ''; $('ragSrc').textContent = '';
+  stream(`/api/rag/stream?question=${encodeURIComponent($('ragQ').value)}`, $('ragOut'), null, $('ragBtn'),
+    sources => sources.forEach(s => {
+      const li = document.createElement('li');
+      li.textContent = `${s.file} (oxşarlıq ${s.score}): ${s.preview}`;
+      $('ragSrc').append(li);
+    }));
+};
+
+async function ragStatus() {
+  try {
+    const s = await (await fetch('/api/rag/status')).json();
+    const el = $('ragStatus');
+    el.className = 'stats ' + (s.state === 'READY' ? 'ok' : s.state === 'FAILED' ? 'err' : '');
+    el.textContent = s.state === 'READY' ? `İndeks hazırdır: ${s.files} fayl, ${s.chunks} parça, ${s.elapsedMs} ms`
+                   : s.state === 'FAILED' ? `İndeksləmə alınmadı: ${s.error}`
+                   : `İndeks: ${s.state}… (ilk dəfə embedding modeli yüklənə bilər)`;
+    if (s.state !== 'READY' && s.state !== 'FAILED') setTimeout(ragStatus, 2000);
+  } catch { setTimeout(ragStatus, 2000); }
+}
+ragStatus();
+</script>
+</body>
+</html>

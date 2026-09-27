@@ -1,0 +1,50 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '4.1.1'
+    id 'io.spring.dependency-management' version '1.1.7'
+}
+
+group = 'io.github.gshahrza'
+version = '1.0.0'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencyManagement {
+    imports {
+        mavenBom 'org.springframework.ai:spring-ai-bom:2.0.1'
+    }
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-webmvc'
+    // Chat and embedding models served by a local Ollama
+    implementation 'org.springframework.ai:spring-ai-starter-model-ollama'
+    // RAG: in-memory vector store and a Markdown reader for the book in docs/
+    implementation 'org.springframework.ai:spring-ai-vector-store'
+    implementation 'org.springframework.ai:spring-ai-markdown-document-reader'
+    // Chat memory (in-memory repository)
+    implementation 'org.springframework.ai:spring-ai-starter-model-chat-memory'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'io.projectreactor:reactor-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+// The streaming book (docs/*.md) is packaged into the jar and used as the RAG knowledge base
+processResources {
+    from(rootProject.file('docs')) {
+        into 'rag-docs'
+    }
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
