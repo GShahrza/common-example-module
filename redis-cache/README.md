@@ -13,6 +13,8 @@ Keş yavaş, amma tez-tez eyni cavabı verən mənbənin (baza, xarici API, ağ�
 | Hit/miss metrikaları | `spring.cache.redis.enable-statistics` |
 | Testcontainers ilə real Redis-də test | `RedisCacheTest` |
 
+📖 Kitab üslubunda izah və 30 müsahibə sualı: [21. Redis: keşləmə və yaddaşdakı məlumat strukturları](../docs/21-redis.md).
+
 ## İşə salma qaydası
 
 Ardıcıllıqla:

@@ -1,6 +1,6 @@
 # 20. Kafka: event-driven arxitektura və etibarlı mesajlaşma
 
-[← 19. Spring Batch](19-spring-batch.md) · [Mündəricat](README.md)
+[← 19. Spring Batch](19-spring-batch.md) · [Mündəricat](README.md) · Növbəti: [21. Redis →](21-redis.md)
 
 **Hissə IV: Əlavə mövzular** · **Kod:** [`OrderService`](../kafka-events/src/main/java/io/github/gshahrza/events/order/OrderService.java), [`Outbox`](../kafka-events/src/main/java/io/github/gshahrza/events/outbox/Outbox.java), [`OutboxRelay`](../kafka-events/src/main/java/io/github/gshahrza/events/outbox/OutboxRelay.java), [`PaymentService`](../kafka-events/src/main/java/io/github/gshahrza/events/payment/PaymentService.java), [`PaymentListener`](../kafka-events/src/main/java/io/github/gshahrza/events/payment/PaymentListener.java) · **Demo:** http://localhost:8084
 
@@ -584,4 +584,4 @@ Kafka-da daxili "delayed delivery" yoxdur. Variantlar:
 
 ---
 
-[← 19. Spring Batch](19-spring-batch.md) · [Mündəricat](README.md)
+[← 19. Spring Batch](19-spring-batch.md) · [Mündəricat](README.md) · Növbəti: [21. Redis →](21-redis.md)

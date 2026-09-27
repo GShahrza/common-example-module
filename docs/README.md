@@ -40,7 +40,8 @@ docker compose up --build
 ### IV hissə: Əlavə mövzular
 19. [Spring Batch: böyük faylı etibarlı emal etmək](19-spring-batch.md) ([`spring-batch`](../spring-batch), http://localhost:8085)
 20. [Kafka: event-driven arxitektura və etibarlı mesajlaşma](20-kafka.md) ([`kafka-events`](../kafka-events), http://localhost:8084) + 30 müsahibə sualı
+21. [Redis: keşləmə və yaddaşdakı məlumat strukturları](21-redis.md) ([`redis-cache`](../redis-cache), http://localhost:8088) + 30 müsahibə sualı
 
 ---
 
-Qısa arayış üçün modulların README-lərinə baxın: [mvc-streaming](../mvc-streaming/README.md), [webflux-streaming](../webflux-streaming/README.md), [grpc-streaming](../grpc-streaming/README.md), [spring-batch](../spring-batch/README.md), [kafka-events](../kafka-events/README.md).
+Qısa arayış üçün modulların README-lərinə baxın: [mvc-streaming](../mvc-streaming/README.md), [webflux-streaming](../webflux-streaming/README.md), [grpc-streaming](../grpc-streaming/README.md), [spring-batch](../spring-batch/README.md), [kafka-events](../kafka-events/README.md), [redis-cache](../redis-cache/README.md).
